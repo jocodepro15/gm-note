@@ -29,7 +29,20 @@ export default function History() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-100">Historique</h1>
-        <span className="text-sm text-gray-400">{workouts.length} séance(s)</span>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-400">{workouts.length} séance(s)</span>
+          <button
+            onClick={() => {
+              if (confirm('Supprimer tout l\'historique ? Cette action est irréversible.')) {
+                localStorage.removeItem('workouts');
+                window.location.reload();
+              }
+            }}
+            className="text-xs px-3 py-1.5 rounded-lg bg-red-900/50 text-red-400 hover:bg-red-900 transition-colors"
+          >
+            Tout supprimer
+          </button>
+        </div>
       </div>
 
       <div className="space-y-3">

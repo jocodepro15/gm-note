@@ -2,8 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { useWorkouts } from '../context/WorkoutContext';
 import { Workout } from '../types';
 import Card from '../components/ui/Card';
-import Button from '../components/ui/Button';
-import { injectTestData, clearTestData } from '../utils/generateTestData';
+import { clearTestData } from '../utils/generateTestData';
 import {
   LineChart,
   Line,
@@ -300,9 +299,6 @@ export default function Progression() {
         <p className="text-gray-400 mb-6">
           Enregistre des séances pour voir ta progression ici.
         </p>
-        <Button onClick={injectTestData} variant="secondary">
-          Générer des données de test (1 an)
-        </Button>
       </div>
     );
   }
