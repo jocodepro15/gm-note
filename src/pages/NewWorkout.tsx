@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWorkouts } from '../context/WorkoutContext';
 import { usePrograms } from '../context/ProgramContext';
@@ -6,7 +6,6 @@ import { DayType, Exercise, Set, DayProgram } from '../types';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import { v4 as uuidv4 } from 'uuid';
-import { useLocalStorage } from '../hooks/useLocalStorage';
 
 const dayNames: DayType[] = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
 
@@ -21,36 +20,13 @@ export default function NewWorkout() {
   // dimanche = 0, donc on gère ça
   const defaultDay = todayIndex === 0 ? 'dimanche' : dayNames[todayIndex - 1];
 
-  // Sauvegarde le workout en cours dans localStorage pour ne pas perdre les modifications
-  const [savedWorkout, setSavedWorkout] = useLocalStorage<{
-    workout: ReturnType<typeof createWorkoutFromTemplate>;
-    programId: string;
-    day: DayType;
-  } | null>('currentWorkout', null);
-
-  const [selectedDay, setSelectedDay] = useState<DayType>(savedWorkout?.day || defaultDay);
+  const [selectedDay, setSelectedDay] = useState<DayType>(defaultDay);
   const [selectedProgram, setSelectedProgram] = useState<DayProgram>(() => {
-    if (savedWorkout?.programId) {
-      const found = programs.find(p => p.id === savedWorkout.programId);
-      if (found) return found;
-    }
     return programs.find(p => p.dayType === defaultDay) || programs[0];
   });
   const [workout, setWorkout] = useState(() => {
-    if (savedWorkout?.workout) {
-      return savedWorkout.workout;
-    }
     return createWorkoutFromTemplate(defaultDay);
   });
-
-  // Sauvegarde automatique quand le workout change
-  useEffect(() => {
-    setSavedWorkout({
-      workout,
-      programId: selectedProgram.id,
-      day: selectedDay,
-    });
-  }, [workout, selectedProgram.id, selectedDay, setSavedWorkout]);
 
   // Change le jour sélectionné (met à jour le programme par défaut)
   const handleDayChange = (day: DayType) => {
@@ -200,14 +176,12 @@ export default function NewWorkout() {
   };
 
   // Sauvegarde la séance
-  const handleSave = (completed: boolean) => {
-    addWorkout({
+  const handleSave = async (completed: boolean) => {
+    await addWorkout({
       ...workout,
       date: new Date().toISOString(),
       completed,
     });
-    // Efface le brouillon
-    setSavedWorkout(null);
     navigate('/');
   };
 
