@@ -7,7 +7,6 @@ import Informations from './pages/Informations'
 import Calculatrice from './pages/Calculatrice'
 import Chronometre from './pages/Chronometre'
 import Programmes from './pages/Programmes'
-import Exercices from './pages/Exercices'
 import Progression from './pages/Progression'
 
 function App() {
@@ -21,7 +20,6 @@ function App() {
         <Route path="/calc" element={<Calculatrice />} />
         <Route path="/infos" element={<Informations />} />
         <Route path="/programmes" element={<Programmes />} />
-        <Route path="/exercices" element={<Exercices />} />
         <Route path="/progression" element={<Progression />} />
       </Routes>
     </Layout>

@@ -4,7 +4,6 @@ const navItems = [
   { path: '/', label: 'Dashboard' },
   { path: '/new', label: 'Mes séances' },
   { path: '/programmes', label: 'Programmes' },
-  { path: '/exercices', label: 'Exercices' },
   { path: '/history', label: 'Historique' },
   { path: '/progression', label: 'Progression' },
   { path: '/timer', label: 'Chrono' },

@@ -69,11 +69,12 @@ export function generateTestWorkouts(): Workout[] {
     'Mobilité': 0,
   };
 
-  // Générer 8 semaines de données
+  // Générer 52 semaines (1 an) de données
   const now = new Date();
+  const totalWeeks = 52;
   const daysOfWeek: DayType[] = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
 
-  for (let week = 7; week >= 0; week--) {
+  for (let week = totalWeeks - 1; week >= 0; week--) {
     // Chaque semaine, on fait 4-6 séances
     const sessionsThisWeek = 4 + Math.floor(Math.random() * 3);
     const daysToTrain = [...daysOfWeek].sort(() => Math.random() - 0.5).slice(0, sessionsThisWeek);
@@ -85,8 +86,8 @@ export function generateTestWorkouts(): Workout[] {
 
       const { session, exercises: exerciseNames } = dayExercises[dayType];
 
-      // Progression : +2.5kg par semaine en moyenne
-      const weekProgression = (7 - week) * 2.5;
+      // Progression : +0.5kg par semaine en moyenne (réaliste sur 1 an)
+      const weekProgression = (totalWeeks - 1 - week) * 0.5;
 
       const exercises: Exercise[] = exerciseNames.map((name, index) => {
         const baseWeight = baseWeights[name] || 20;
@@ -105,7 +106,7 @@ export function generateTestWorkouts(): Workout[] {
           id: uuidv4(),
           name,
           sets,
-          rm: Math.round((baseWeight + 30) / 2.5) * 2.5, // RM estimé
+          rm: Math.round((baseWeight + 30 + weekProgression) / 2.5) * 2.5, // RM avec progression
           exerciseOrder: index,
         };
       });

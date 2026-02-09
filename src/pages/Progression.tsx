@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useWorkouts } from '../context/WorkoutContext';
-import { Workout, Exercise } from '../types';
+import { Workout } from '../types';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import { injectTestData, clearTestData } from '../utils/generateTestData';
@@ -14,9 +14,6 @@ import {
   ResponsiveContainer,
   AreaChart,
   Area,
-  BarChart,
-  Bar,
-  Legend,
 } from 'recharts';
 
 // Options de période en mois (0 = tout l'historique)
@@ -143,43 +140,6 @@ export default function Progression() {
     });
   }, [filteredWorkouts]);
 
-  // Données pour le graphique d'évolution par exercice
-  const exerciseProgressData = useMemo(() => {
-    if (selectedExercise === 'all') return [];
-
-    const data: { date: string; fullDate: string; maxWeight: number; estimated1RM: number; volume: number }[] = [];
-
-    filteredWorkouts.forEach((w) => {
-      const exercise = w.exercises.find((e) => e.name === selectedExercise);
-      if (exercise && exercise.sets.length > 0) {
-        let maxWeight = 0;
-        let best1RM = 0;
-        let exerciseVolume = 0;
-
-        exercise.sets.forEach((s) => {
-          if (s.completed && s.weight > 0) {
-            if (s.weight > maxWeight) maxWeight = s.weight;
-            const estimated = calculate1RM(s.weight, s.reps);
-            if (estimated > best1RM) best1RM = estimated;
-            exerciseVolume += s.weight * s.reps;
-          }
-        });
-
-        if (maxWeight > 0) {
-          data.push({
-            date: formatDate(w.date),
-            fullDate: formatFullDate(w.date),
-            maxWeight,
-            estimated1RM: best1RM,
-            volume: exerciseVolume,
-          });
-        }
-      }
-    });
-
-    return data;
-  }, [filteredWorkouts, selectedExercise]);
-
   // Records personnels par exercice
   const personalRecords = useMemo(() => {
     const records: Record<string, { maxWeight: number; max1RM: number; maxVolume: number; date: string }> = {};
@@ -268,36 +228,38 @@ export default function Progression() {
     };
   }, [workouts]);
 
-  // Données pour le graphique des séances par semaine
-  const weeklySessionsData = useMemo(() => {
-    const weeks: Record<string, { sessions: number; volume: number }> = {};
+  // Données d'évolution du RM par exercice
+  const rmProgressData = useMemo(() => {
+    if (selectedExercise === 'all') return [];
 
-    filteredWorkouts.forEach((w) => {
-      const date = new Date(w.date);
-      const weekStart = new Date(date);
-      weekStart.setDate(date.getDate() - date.getDay() + 1);
-      const weekKey = weekStart.toISOString().split('T')[0];
+    const data: { date: string; fullDate: string; rm: number }[] = [];
 
-      if (!weeks[weekKey]) {
-        weeks[weekKey] = { sessions: 0, volume: 0 };
-      }
-      weeks[weekKey].sessions++;
+    // Trier les workouts par date croissante
+    const sorted = [...workouts].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-      w.exercises.forEach((e) => {
-        e.sets.forEach((s) => {
-          if (s.completed) weeks[weekKey].volume += s.weight * s.reps;
+    sorted.forEach((w) => {
+      const exercise = w.exercises.find((e) => e.name === selectedExercise);
+      if (exercise && exercise.rm && exercise.rm > 0) {
+        data.push({
+          date: formatDate(w.date),
+          fullDate: formatFullDate(w.date),
+          rm: exercise.rm,
         });
-      });
+      }
     });
 
-    return Object.entries(weeks)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([week, data]) => ({
-        semaine: formatDate(week),
-        séances: data.sessions,
-        volume: Math.round(data.volume / 1000), // en tonnes
-      }));
-  }, [filteredWorkouts]);
+    return data;
+  }, [workouts, selectedExercise]);
+
+  // État pour la recherche d'exercice
+  const [exerciseSearch, setExerciseSearch] = useState('');
+
+  // Exercices filtrés par la recherche
+  const filteredExercises = useMemo(() => {
+    if (!exerciseSearch) return allExercises;
+    const search = exerciseSearch.toLowerCase();
+    return allExercises.filter((ex) => ex.toLowerCase().includes(search));
+  }, [allExercises, exerciseSearch]);
 
   // Progression récente par exercice (dernière séance vs avant-dernière)
   const recentProgress = useMemo(() => {
@@ -339,7 +301,7 @@ export default function Progression() {
           Enregistre des séances pour voir ta progression ici.
         </p>
         <Button onClick={injectTestData} variant="secondary">
-          Générer des données de test (8 semaines)
+          Générer des données de test (1 an)
         </Button>
       </div>
     );
@@ -467,7 +429,7 @@ export default function Progression() {
                     borderRadius: '8px',
                   }}
                   labelFormatter={(_, payload) => payload[0]?.payload?.fullDate || ''}
-                  formatter={(value: number) => [`${value.toLocaleString()} kg`, 'Volume']}
+                  formatter={(value: unknown) => [`${Number(value).toLocaleString()} kg`, 'Volume']}
                 />
                 <Area
                   type="monotone"
@@ -484,95 +446,97 @@ export default function Progression() {
         )}
       </Card>
 
-      {/* Graphique séances par semaine */}
+      {/* Évolution du RM par exercice */}
       <Card>
-        <h2 className="text-lg font-semibold text-white mb-4">Séances par semaine</h2>
-        {weeklySessionsData.length > 0 ? (
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={weeklySessionsData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="semaine" stroke="#9ca3af" fontSize={12} />
-                <YAxis yAxisId="left" stroke="#9ca3af" fontSize={12} />
-                <YAxis yAxisId="right" orientation="right" stroke="#9ca3af" fontSize={12} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#1f2937',
-                    border: '1px solid #374151',
-                    borderRadius: '8px',
-                  }}
-                />
-                <Legend />
-                <Bar yAxisId="left" dataKey="séances" fill="#10b981" radius={[4, 4, 0, 0]} />
-                <Bar yAxisId="right" dataKey="volume" fill="#8b5cf6" radius={[4, 4, 0, 0]} name="volume (t)" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        ) : (
-          <p className="text-gray-400 text-center py-8">Pas assez de données</p>
-        )}
-      </Card>
+        <h2 className="text-lg font-semibold text-white mb-4">Évolution du RM par exercice</h2>
 
-      {/* Sélecteur d'exercice + graphique de progression */}
-      <Card>
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-          <h2 className="text-lg font-semibold text-white">Progression par exercice</h2>
-          <select
-            value={selectedExercise}
-            onChange={(e) => setSelectedExercise(e.target.value)}
-            className="bg-gray-700 text-white rounded-lg px-3 py-2 text-sm border border-gray-600 focus:border-primary-500 focus:outline-none"
-          >
-            <option value="all">Sélectionner un exercice</option>
-            {allExercises.map((ex) => (
-              <option key={ex} value={ex}>
+        {/* Barre de recherche */}
+        <input
+          type="text"
+          value={exerciseSearch}
+          onChange={(e) => setExerciseSearch(e.target.value)}
+          placeholder="Rechercher un exercice..."
+          className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 text-sm border border-gray-600 focus:border-primary-500 focus:outline-none mb-3"
+        />
+
+        {/* Liste des exercices */}
+        <div className="max-h-48 overflow-y-auto space-y-1 mb-4">
+          {filteredExercises.length > 0 ? (
+            filteredExercises.map((ex) => (
+              <button
+                key={ex}
+                onClick={() => { setSelectedExercise(ex); setExerciseSearch(''); }}
+                className={`w-full text-left px-4 py-2.5 rounded-lg text-sm transition-colors ${
+                  selectedExercise === ex
+                    ? 'bg-primary-600 text-white font-medium'
+                    : 'text-gray-300 hover:bg-gray-700'
+                }`}
+              >
                 {ex}
-              </option>
-            ))}
-          </select>
+              </button>
+            ))
+          ) : (
+            <p className="text-gray-500 text-sm text-center py-4">Aucun exercice trouvé</p>
+          )}
         </div>
 
-        {selectedExercise !== 'all' && exerciseProgressData.length > 0 ? (
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={exerciseProgressData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} />
-                <YAxis stroke="#9ca3af" fontSize={12} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#1f2937',
-                    border: '1px solid #374151',
-                    borderRadius: '8px',
-                  }}
-                  labelFormatter={(_, payload) => payload[0]?.payload?.fullDate || ''}
-                />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="maxWeight"
-                  stroke="#f59e0b"
-                  strokeWidth={2}
-                  dot={{ fill: '#f59e0b', strokeWidth: 2 }}
-                  name="Poids max (kg)"
-                />
-                <Line
-                  type="monotone"
-                  dataKey="estimated1RM"
-                  stroke="#ef4444"
-                  strokeWidth={2}
-                  dot={{ fill: '#ef4444', strokeWidth: 2 }}
-                  name="1RM estimé (kg)"
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+        {/* Graphique RM */}
+        {selectedExercise !== 'all' && rmProgressData.length > 0 ? (
+          <>
+            <div className="border-t border-gray-700 pt-4 mb-2">
+              <h3 className="text-md font-medium text-primary-400 mb-1">{selectedExercise}</h3>
+              <p className="text-xs text-gray-400 mb-3">
+                RM actuel : <span className="text-white font-semibold">{rmProgressData[rmProgressData.length - 1].rm} kg</span>
+                {rmProgressData.length >= 2 && (() => {
+                  const diff = rmProgressData[rmProgressData.length - 1].rm - rmProgressData[0].rm;
+                  return (
+                    <span className={diff >= 0 ? 'text-green-400' : 'text-red-400'}>
+                      {' '}({diff >= 0 ? '+' : ''}{diff} kg depuis le début)
+                    </span>
+                  );
+                })()}
+              </p>
+            </div>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={rmProgressData}>
+                  <defs>
+                    <linearGradient id="rmGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} />
+                  <YAxis stroke="#9ca3af" fontSize={12} domain={['dataMin - 5', 'dataMax + 5']} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#1f2937',
+                      border: '1px solid #374151',
+                      borderRadius: '8px',
+                    }}
+                    labelFormatter={(_, payload) => payload[0]?.payload?.fullDate || ''}
+                    formatter={(value: unknown) => [`${value} kg`, 'RM']}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="rm"
+                    stroke="#f59e0b"
+                    strokeWidth={2}
+                    dot={{ fill: '#f59e0b', strokeWidth: 2, r: 4 }}
+                    activeDot={{ r: 6 }}
+                    name="RM (kg)"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </>
         ) : selectedExercise !== 'all' ? (
-          <p className="text-gray-400 text-center py-8">Pas de données pour cet exercice</p>
-        ) : (
-          <p className="text-gray-400 text-center py-8">
-            Sélectionne un exercice pour voir sa progression
-          </p>
-        )}
+          <div className="border-t border-gray-700 pt-4">
+            <h3 className="text-md font-medium text-primary-400 mb-2">{selectedExercise}</h3>
+            <p className="text-gray-400 text-center py-8">Aucun RM enregistré pour cet exercice</p>
+          </div>
+        ) : null}
       </Card>
 
       {/* Progression récente */}
