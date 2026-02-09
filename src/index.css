@@ -7,6 +7,15 @@ body {
   @apply bg-gray-900 text-gray-100;
 }
 
+/* Masquer la scrollbar de la navigation */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* Utilitaires personnalisés */
 @layer components {
   .btn-primary {
