@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { DayProgram, DayType } from '../types';
-import { defaultPrograms } from '../data/weeklyProgram';
 import { useAuth } from './AuthContext';
 import { supabase } from '../lib/supabase';
 
@@ -21,8 +20,8 @@ export function ProgramProvider({ children }: { children: ReactNode }) {
   const [customPrograms, setCustomPrograms] = useState<DayProgram[]>([]);
   const { user } = useAuth();
 
-  // Combine les programmes par défaut et personnalisés
-  const programs = [...defaultPrograms, ...customPrograms];
+  // Uniquement les programmes créés par l'utilisateur
+  const programs = customPrograms;
 
   // Charger les programmes custom depuis Supabase
   const loadCustomPrograms = useCallback(async () => {
@@ -88,21 +87,7 @@ export function ProgramProvider({ children }: { children: ReactNode }) {
   const updateProgram = async (id: string, updates: Partial<DayProgram>) => {
     if (!user) return;
 
-    // Si c'est un programme par défaut, on crée une copie personnalisée
-    const existingDefault = defaultPrograms.find(p => p.id === id);
-    if (existingDefault) {
-      const merged = { ...existingDefault, ...updates };
-      await addProgram({
-        dayType: merged.dayType,
-        sessionName: merged.sessionName,
-        focus: merged.focus,
-        exercises: merged.exercises,
-        isCustom: true,
-      });
-      return;
-    }
-
-    // Modifier le programme personnalisé existant
+    // Modifier le programme existant
     const dbUpdates: Record<string, unknown> = {};
     if (updates.dayType !== undefined) dbUpdates.day_type = updates.dayType;
     if (updates.sessionName !== undefined) dbUpdates.session_name = updates.sessionName;

@@ -32,10 +32,11 @@ export default function History() {
         <div className="flex items-center gap-3">
           <span className="text-sm text-gray-400">{workouts.length} séance(s)</span>
           <button
-            onClick={() => {
+            onClick={async () => {
               if (confirm('Supprimer tout l\'historique ? Cette action est irréversible.')) {
-                localStorage.removeItem('workouts');
-                window.location.reload();
+                for (const w of workouts) {
+                  await deleteWorkout(w.id);
+                }
               }
             }}
             className="text-xs px-3 py-1.5 rounded-lg bg-red-900/50 text-red-400 hover:bg-red-900 transition-colors"

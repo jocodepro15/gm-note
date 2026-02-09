@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom';
 import { useWorkouts } from '../context/WorkoutContext';
-import { weeklyProgram } from '../data/weeklyProgram';
+import { usePrograms } from '../context/ProgramContext';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 
 export default function Dashboard() {
   const { workouts } = useWorkouts();
+  const { programs } = usePrograms();
 
   // Récupère les séances de cette semaine
   const today = new Date();
@@ -21,7 +22,7 @@ export default function Dashboard() {
   // Jour actuel en français
   const dayNames = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
   const todayName = dayNames[today.getDay()];
-  const todayProgram = weeklyProgram.find((p) => p.dayType === todayName);
+  const todayProgram = programs.find((p) => p.dayType === todayName);
 
   return (
     <div className="space-y-6">
@@ -53,38 +54,52 @@ export default function Dashboard() {
       )}
 
       {/* Résumé de la semaine */}
-      <div>
-        <h2 className="text-lg font-semibold text-gray-100 mb-3">Cette semaine</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {weeklyProgram.map((program) => {
-            const completed = thisWeekWorkouts.some(
-              (w) => w.dayType === program.dayType && w.completed
-            );
-            const started = thisWeekWorkouts.some((w) => w.dayType === program.dayType);
+      {programs.length > 0 && (
+        <div>
+          <h2 className="text-lg font-semibold text-gray-100 mb-3">Cette semaine</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {programs.map((program) => {
+              const completed = thisWeekWorkouts.some(
+                (w) => w.dayType === program.dayType && w.completed
+              );
+              const started = thisWeekWorkouts.some((w) => w.dayType === program.dayType);
 
-            return (
-              <Card
-                key={program.dayType}
-                className={`${
-                  completed
-                    ? 'bg-green-900/30 border-green-600'
-                    : started
-                    ? 'bg-yellow-900/30 border-yellow-600'
-                    : ''
-                }`}
-              >
-                <div className="text-xs text-gray-400 uppercase tracking-wide">
-                  {program.dayType}
-                </div>
-                <div className="font-medium text-gray-100 mt-1">{program.sessionName}</div>
-                <div className="text-xs text-gray-400 mt-1">
-                  {completed ? '✓ Terminée' : started ? 'En cours' : program.focus}
-                </div>
-              </Card>
-            );
-          })}
+              return (
+                <Card
+                  key={program.id}
+                  className={`${
+                    completed
+                      ? 'bg-green-900/30 border-green-600'
+                      : started
+                      ? 'bg-yellow-900/30 border-yellow-600'
+                      : ''
+                  }`}
+                >
+                  <div className="text-xs text-gray-400 uppercase tracking-wide">
+                    {program.dayType}
+                  </div>
+                  <div className="font-medium text-gray-100 mt-1">{program.sessionName}</div>
+                  <div className="text-xs text-gray-400 mt-1">
+                    {completed ? '✓ Terminée' : started ? 'En cours' : program.focus}
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Message si pas de programmes */}
+      {programs.length === 0 && (
+        <Card className="bg-gray-800 border-gray-700">
+          <p className="text-gray-400 text-center py-4">
+            Aucun programme configuré.{' '}
+            <Link to="/programmes" className="text-primary-400 hover:text-primary-300">
+              Crée ton premier programme
+            </Link>
+          </p>
+        </Card>
+      )}
 
       {/* Dernières séances */}
       <div>

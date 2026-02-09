@@ -20,26 +20,8 @@ export default function NewWorkout() {
   // dimanche = 0, donc on gère ça
   const defaultDay = todayIndex === 0 ? 'dimanche' : dayNames[todayIndex - 1];
 
-  const [selectedDay, setSelectedDay] = useState<DayType>(defaultDay);
-  const [selectedProgram, setSelectedProgram] = useState<DayProgram>(() => {
-    return programs.find(p => p.dayType === defaultDay) || programs[0];
-  });
-  const [workout, setWorkout] = useState(() => {
-    return createWorkoutFromTemplate(defaultDay);
-  });
-
-  // Change le jour sélectionné (met à jour le programme par défaut)
-  const handleDayChange = (day: DayType) => {
-    setSelectedDay(day);
-    const program = programs.find(p => p.dayType === day);
-    if (program) {
-      setSelectedProgram(program);
-      setWorkout(createWorkoutFromProgramData(program, day));
-    }
-  };
-
   // Crée un workout à partir des données d'un programme
-  const createWorkoutFromProgramData = (program: DayProgram, day: DayType) => ({
+  const makeWorkoutFromProgram = (program: DayProgram, day: DayType) => ({
     id: uuidv4(),
     date: new Date().toISOString(),
     dayType: day,
@@ -57,6 +39,31 @@ export default function NewWorkout() {
     })),
     completed: false,
   });
+
+  const [selectedDay, setSelectedDay] = useState<DayType>(defaultDay);
+  const [selectedProgram, setSelectedProgram] = useState<DayProgram | null>(() => {
+    return programs.find(p => p.dayType === defaultDay) || programs[0] || null;
+  });
+  const [workout, setWorkout] = useState(() => {
+    const program = programs.find(p => p.dayType === defaultDay) || programs[0];
+    if (program) {
+      return makeWorkoutFromProgram(program, defaultDay);
+    }
+    return createWorkoutFromTemplate(defaultDay);
+  });
+
+  // Change le jour sélectionné
+  const handleDayChange = (day: DayType) => {
+    setSelectedDay(day);
+    const program = programs.find(p => p.dayType === day);
+    if (program) {
+      setSelectedProgram(program);
+      setWorkout(makeWorkoutFromProgram(program, day));
+    } else {
+      setSelectedProgram(null);
+      setWorkout(createWorkoutFromTemplate(day));
+    }
+  };
 
   // Change uniquement le type de séance (garde le jour)
   const handleProgramChange = (program: DayProgram) => {
@@ -188,30 +195,33 @@ export default function NewWorkout() {
   // Réinitialise la séance
   const handleReset = () => {
     if (confirm('Réinitialiser la séance ? Toutes les modifications seront perdues.')) {
-      setWorkout(createWorkoutFromProgramData(selectedProgram, selectedDay));
+      if (selectedProgram) {
+        setWorkout(makeWorkoutFromProgram(selectedProgram, selectedDay));
+      } else {
+        setWorkout(createWorkoutFromTemplate(selectedDay));
+      }
     }
   };
 
   // Sauvegarde les exercices dans le programme
   const handleSaveToProgram = () => {
+    if (workout.exercises.length === 0) return;
     const exerciseNames = workout.exercises.map(ex => ex.name);
 
-    if (selectedProgram.isCustom) {
-      // Met à jour le programme personnalisé existant
+    if (selectedProgram) {
       updateProgram(selectedProgram.id, {
         exercises: exerciseNames,
       });
       alert('Programme mis à jour !');
     } else {
-      // Crée une copie personnalisée du programme par défaut
       addProgram({
-        dayType: selectedProgram.dayType,
-        sessionName: selectedProgram.sessionName + ' (modifié)',
-        focus: selectedProgram.focus,
+        dayType: selectedDay,
+        sessionName: workout.sessionName,
+        focus: '',
         exercises: exerciseNames,
         isCustom: true,
       });
-      alert('Programme personnalisé créé !');
+      alert('Programme créé !');
     }
   };
 
@@ -245,26 +255,44 @@ export default function NewWorkout() {
       </div>
 
       {/* Sélection du type de séance */}
-      <Card className="bg-gray-800 border-primary-600">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="font-semibold text-primary-300">{selectedProgram.sessionName}</h2>
-          <select
-            value={selectedProgram.id}
-            onChange={(e) => {
-              const program = programs.find(p => p.id === e.target.value);
-              if (program) handleProgramChange(program);
-            }}
-            className="text-sm bg-gray-700 border border-gray-600 rounded-lg px-2 py-1 text-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-            {programs.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.sessionName} {p.isCustom ? '(perso)' : ''}
-              </option>
-            ))}
-          </select>
-        </div>
-        <p className="text-sm text-primary-400">{selectedProgram.focus}</p>
-      </Card>
+      {programs.length > 0 ? (
+        <Card className="bg-gray-800 border-primary-600">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="font-semibold text-primary-300">{selectedProgram?.sessionName || `Séance ${selectedDay}`}</h2>
+            <select
+              value={selectedProgram?.id || ''}
+              onChange={(e) => {
+                const program = programs.find(p => p.id === e.target.value);
+                if (program) handleProgramChange(program);
+              }}
+              className="text-sm bg-gray-700 border border-gray-600 rounded-lg px-2 py-1 text-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              {programs.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.sessionName}
+                </option>
+              ))}
+            </select>
+          </div>
+          {selectedProgram?.focus && <p className="text-sm text-primary-400">{selectedProgram.focus}</p>}
+        </Card>
+      ) : (
+        <Card className="bg-gray-800 border-gray-700">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-semibold text-gray-300">Séance libre</h2>
+              <p className="text-sm text-gray-400">Ajoute des exercices ci-dessous</p>
+            </div>
+            <input
+              type="text"
+              value={workout.sessionName}
+              onChange={(e) => setWorkout(prev => ({ ...prev, sessionName: e.target.value }))}
+              className="input text-sm w-40 text-right"
+              placeholder="Nom de la séance"
+            />
+          </div>
+        </Card>
+      )}
 
       {/* Exercices */}
       <div className="space-y-4">
