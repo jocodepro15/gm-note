@@ -19,6 +19,11 @@ interface ExerciseCardProps {
   onApplySuggestion?: () => void;
   // Échauffement
   onGenerateWarmup?: () => void;
+  // Réorganisation
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  isFirst?: boolean;
+  isLast?: boolean;
 }
 
 const SUPERSET_COLORS: Record<number, string> = {
@@ -40,6 +45,10 @@ export default function ExerciseCard({
   suggestion,
   onApplySuggestion,
   onGenerateWarmup,
+  onMoveUp,
+  onMoveDown,
+  isFirst,
+  isLast,
 }: ExerciseCardProps) {
   const [showNotes, setShowNotes] = useState(false);
   const [showSupersetMenu, setShowSupersetMenu] = useState(false);
@@ -50,6 +59,27 @@ export default function ExerciseCard({
     <Card className={borderClass}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
+          {/* Boutons réorganisation */}
+          {(onMoveUp || onMoveDown) && (
+            <div className="flex flex-col -my-1 mr-1">
+              <button
+                onClick={onMoveUp}
+                disabled={isFirst}
+                className={`text-xs leading-none ${isFirst ? 'text-gray-700 cursor-default' : 'text-gray-400 hover:text-white'}`}
+                title="Monter"
+              >
+                ▲
+              </button>
+              <button
+                onClick={onMoveDown}
+                disabled={isLast}
+                className={`text-xs leading-none ${isLast ? 'text-gray-700 cursor-default' : 'text-gray-400 hover:text-white'}`}
+                title="Descendre"
+              >
+                ▼
+              </button>
+            </div>
+          )}
           <h3 className="font-semibold text-gray-100">{exercise.name}</h3>
           <button
             onClick={onDelete}
@@ -150,13 +180,27 @@ export default function ExerciseCard({
           return (
             <div key={set.id} className="grid grid-cols-7 gap-1.5 items-center">
               <div className="text-sm font-medium text-gray-300">{set.setNumber}</div>
-              <input
-                type="number"
-                value={set.weight || ''}
-                onChange={(e) => onUpdateSet(set.id, 'weight', parseFloat(e.target.value) || 0)}
-                className="input text-center text-sm py-1"
-                placeholder="0"
-              />
+              <div className="flex items-center gap-0.5">
+                <button
+                  onClick={() => onUpdateSet(set.id, 'weight', Math.max(0, (set.weight || 0) - 2.5))}
+                  className="w-5 h-6 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-600 transition-colors flex-shrink-0"
+                >
+                  −
+                </button>
+                <input
+                  type="number"
+                  value={set.weight || ''}
+                  onChange={(e) => onUpdateSet(set.id, 'weight', parseFloat(e.target.value) || 0)}
+                  className="input text-center text-sm py-1 min-w-0"
+                  placeholder="0"
+                />
+                <button
+                  onClick={() => onUpdateSet(set.id, 'weight', (set.weight || 0) + 2.5)}
+                  className="w-5 h-6 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-600 transition-colors flex-shrink-0"
+                >
+                  +
+                </button>
+              </div>
               <div className={`text-center text-sm py-1 rounded-lg font-medium ${
                 percentRM ? getPercentColor(percentRM) : 'text-gray-400'
               }`}>

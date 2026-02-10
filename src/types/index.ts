@@ -68,3 +68,10 @@ export interface DailyWellness {
   muscleSoreness: number; // 1-5
   notes?: string;
 }
+
+// Objectifs personnels
+export interface Goal {
+  id: string;
+  exerciseName: string;
+  targetWeight: number; // kg
+}

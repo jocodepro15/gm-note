@@ -28,6 +28,10 @@ function ExerciseWithSuggestion({
   onSetSupersetGroup,
   onGenerateWarmup,
   onApplySuggestion,
+  onMoveUp,
+  onMoveDown,
+  isFirst,
+  isLast,
 }: {
   exercise: Exercise;
   workouts: ReturnType<typeof useWorkouts>['workouts'];
@@ -40,6 +44,10 @@ function ExerciseWithSuggestion({
   onSetSupersetGroup: (group: number | undefined) => void;
   onGenerateWarmup: () => void;
   onApplySuggestion: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  isFirst: boolean;
+  isLast: boolean;
 }) {
   const lastSession = useLastSessionData(exercise.name, workouts);
 
@@ -57,6 +65,10 @@ function ExerciseWithSuggestion({
       suggestion={lastSession?.suggestion}
       onApplySuggestion={onApplySuggestion}
       onGenerateWarmup={onGenerateWarmup}
+      onMoveUp={onMoveUp}
+      onMoveDown={onMoveDown}
+      isFirst={isFirst}
+      isLast={isLast}
     />
   );
 }
@@ -268,6 +280,22 @@ export default function NewWorkout() {
       ...prev,
       exercises: prev.exercises.filter((ex) => ex.id !== exerciseId),
     }));
+  };
+
+  // Réorganiser un exercice (monter/descendre)
+  const moveExercise = (exerciseId: string, direction: 'up' | 'down') => {
+    setWorkout((prev) => {
+      const exercises = [...prev.exercises].sort((a, b) => a.exerciseOrder - b.exerciseOrder);
+      const idx = exercises.findIndex(ex => ex.id === exerciseId);
+      if (idx === -1) return prev;
+      const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+      if (swapIdx < 0 || swapIdx >= exercises.length) return prev;
+      // Swap exerciseOrder
+      const tempOrder = exercises[idx].exerciseOrder;
+      exercises[idx] = { ...exercises[idx], exerciseOrder: exercises[swapIdx].exerciseOrder };
+      exercises[swapIdx] = { ...exercises[swapIdx], exerciseOrder: tempOrder };
+      return { ...prev, exercises };
+    });
   };
 
   const addSet = (exerciseId: string) => {
@@ -515,6 +543,10 @@ export default function NewWorkout() {
                     onSetSupersetGroup={(g) => updateExerciseSupersetGroup(exercise.id, g)}
                     onGenerateWarmup={() => generateWarmupSets(exercise.id)}
                     onApplySuggestion={() => applySuggestion(exercise.id)}
+                    onMoveUp={() => moveExercise(exercise.id, 'up')}
+                    onMoveDown={() => moveExercise(exercise.id, 'down')}
+                    isFirst={exercise.exerciseOrder === 0}
+                    isLast={exercise.exerciseOrder === workout.exercises.length - 1}
                   />
                 ))}
               </SupersetGroupWrapper>
@@ -536,6 +568,10 @@ export default function NewWorkout() {
               onSetSupersetGroup={(g) => updateExerciseSupersetGroup(exercise.id, g)}
               onGenerateWarmup={() => generateWarmupSets(exercise.id)}
               onApplySuggestion={() => applySuggestion(exercise.id)}
+              onMoveUp={() => moveExercise(exercise.id, 'up')}
+              onMoveDown={() => moveExercise(exercise.id, 'down')}
+              isFirst={exercise.exerciseOrder === 0}
+              isLast={exercise.exerciseOrder === workout.exercises.length - 1}
             />
           );
         })}

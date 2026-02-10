@@ -1,9 +1,10 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useWorkouts } from '../context/WorkoutContext';
 import { usePrograms } from '../context/ProgramContext';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import DeloadBanner from '../components/dashboard/DeloadBanner';
+import TrainingCalendar from '../components/dashboard/TrainingCalendar';
 import { Workout } from '../types';
 
 // Icône selon le type de séance
@@ -35,6 +36,7 @@ const getWorkoutSetCount = (workout: Workout): number =>
   );
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const { workouts } = useWorkouts();
   const { programs } = usePrograms();
 
@@ -132,7 +134,7 @@ export default function Dashboard() {
 
       {/* 2. Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-100">Dashboard</h1>
+        <h1 className="text-2xl font-bold text-gray-100">Accueil</h1>
         <Link to="/new">
           <Button>Nouvelle séance</Button>
         </Link>
@@ -178,25 +180,41 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* 5. Programme du jour */}
-      {todayProgram && (
-        <Card className="bg-gray-800 border-primary-600">
-          <h2 className="text-lg font-semibold text-primary-300 mb-2">
-            {getSessionIcon(todayProgram.sessionName)} Aujourd'hui : {todayProgram.sessionName}
-          </h2>
-          <p className="text-primary-400 text-sm mb-3">{todayProgram.focus}</p>
-          <div className="flex flex-wrap gap-2">
-            {todayProgram.exercises.map((exercise) => (
-              <span
-                key={exercise}
-                className="px-2 py-1 bg-primary-900/50 text-primary-300 text-xs rounded-full"
-              >
-                {exercise}
-              </span>
-            ))}
-          </div>
-        </Card>
-      )}
+      {/* Calendrier d'entraînement */}
+      <TrainingCalendar workouts={workouts} />
+
+      {/* 5. Programme du jour (cliquable → redirige vers la séance) */}
+      {todayProgram && (() => {
+        const todayStr = today.toISOString().split('T')[0];
+        const todayWorkout = workouts.find(
+          w => w.dayType === todayName && w.date.startsWith(todayStr)
+        );
+        const handleTodayClick = () => {
+          if (todayWorkout) {
+            navigate(`/edit/${todayWorkout.id}`);
+          } else {
+            navigate('/new');
+          }
+        };
+        return (
+          <Card className="bg-gray-800 border-primary-600 cursor-pointer hover:border-primary-400 transition-colors" onClick={handleTodayClick}>
+            <h2 className="text-lg font-semibold text-primary-300 mb-2">
+              {getSessionIcon(todayProgram.sessionName)} Aujourd'hui : {todayProgram.sessionName}
+            </h2>
+            <p className="text-primary-400 text-sm mb-3">{todayProgram.focus}</p>
+            <div className="flex flex-wrap gap-2">
+              {todayProgram.exercises.map((exercise) => (
+                <span
+                  key={exercise}
+                  className="px-2 py-1 bg-primary-900/50 text-primary-300 text-xs rounded-full"
+                >
+                  {exercise}
+                </span>
+              ))}
+            </div>
+          </Card>
+        );
+      })()}
 
       {/* 6. Records personnels récents */}
       {recentPRs.length > 0 && (

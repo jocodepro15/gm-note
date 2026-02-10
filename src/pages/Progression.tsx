@@ -8,6 +8,7 @@ import WeeklyTonnageChart from '../components/progression/WeeklyTonnageChart';
 import MuscleFrequencyChart from '../components/progression/MuscleFrequencyChart';
 import SessionComparison from '../components/progression/SessionComparison';
 import StrengthCurveChart from '../components/progression/StrengthCurveChart';
+import GoalsSection from '../components/progression/GoalsSection';
 import {
   LineChart,
   Line,
@@ -287,6 +288,9 @@ export default function Progression() {
 
   return (
     <div className="space-y-6">
+      {/* Objectifs personnels */}
+      <GoalsSection />
+
       {/* Header avec sélecteur de période */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-white">Progression</h1>

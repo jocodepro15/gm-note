@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { exercisesList, exerciseCategories, ExerciseInfo } from '../data/exercises';
 import { useWorkouts } from '../context/WorkoutContext';
+import { useFavoriteExercises } from '../hooks/useFavoriteExercises';
 import Card from '../components/ui/Card';
 
 // Icônes par catégorie
@@ -35,12 +36,15 @@ export default function Exercices() {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const { workouts } = useWorkouts();
+  const { toggleFavorite, isFavorite } = useFavoriteExercises();
 
   // Filtrer les exercices
   const filteredExercises = useMemo(() => {
     let result = exercisesList;
 
-    if (selectedCategory) {
+    if (selectedCategory === '__favorites__') {
+      result = result.filter(ex => isFavorite(ex.name));
+    } else if (selectedCategory) {
       result = result.filter(ex => ex.category === selectedCategory);
     }
 
@@ -54,7 +58,7 @@ export default function Exercices() {
     }
 
     return result;
-  }, [search, selectedCategory]);
+  }, [search, selectedCategory, isFavorite]);
 
   // Grouper par lettre
   const groupedExercises = useMemo(() => {
@@ -135,6 +139,16 @@ export default function Exercices() {
         >
           Tout
         </button>
+        <button
+          onClick={() => setSelectedCategory(selectedCategory === '__favorites__' ? null : '__favorites__')}
+          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+            selectedCategory === '__favorites__'
+              ? 'bg-yellow-600 text-white'
+              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+          }`}
+        >
+          ★ Favoris
+        </button>
         {exerciseCategories.map((cat) => (
           <button
             key={cat}
@@ -174,7 +188,7 @@ export default function Exercices() {
                 </h2>
                 <div className="space-y-2">
                   {exercises.map((exercise) => (
-                    <ExerciseCard key={exercise.id} exercise={exercise} workouts={workouts} />
+                    <ExerciseCardLocal key={exercise.id} exercise={exercise} workouts={workouts} isFav={isFavorite(exercise.name)} onToggleFav={() => toggleFavorite(exercise.name)} />
                   ))}
                 </div>
               </div>
@@ -210,7 +224,7 @@ export default function Exercices() {
 // Composant pour afficher un exercice avec son historique
 import { Workout } from '../types';
 
-function ExerciseCard({ exercise, workouts }: { exercise: ExerciseInfo; workouts: Workout[] }) {
+function ExerciseCardLocal({ exercise, workouts, isFav, onToggleFav }: { exercise: ExerciseInfo; workouts: Workout[]; isFav: boolean; onToggleFav: () => void }) {
   const [showDetails, setShowDetails] = useState(false);
 
   // Historique de cet exercice dans les séances
@@ -270,6 +284,13 @@ function ExerciseCard({ exercise, workouts }: { exercise: ExerciseInfo; workouts
           <h3 className="font-medium text-gray-100 truncate">{exercise.name}</h3>
           <p className="text-sm text-gray-400">{exercise.category}</p>
         </div>
+
+        <button
+          onClick={(e) => { e.stopPropagation(); onToggleFav(); }}
+          className={`text-lg mr-2 hover:scale-110 transition-transform ${isFav ? 'text-yellow-400' : 'text-gray-600 hover:text-yellow-400'}`}
+        >
+          {isFav ? '★' : '☆'}
+        </button>
 
         {exercise.equipment && (
           <span className="text-xs text-gray-500 hidden sm:block">

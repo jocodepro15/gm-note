@@ -6,20 +6,26 @@ import { AuthProvider } from './context/AuthContext'
 import { WorkoutProvider } from './context/WorkoutContext'
 import { ProgramProvider } from './context/ProgramContext'
 import { BodyProvider } from './context/BodyContext'
+import { GoalProvider } from './context/GoalContext'
+import { ThemeProvider } from './context/ThemeContext'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
-      <AuthProvider>
-        <ProgramProvider>
-          <WorkoutProvider>
-            <BodyProvider>
-              <App />
-            </BodyProvider>
-          </WorkoutProvider>
-        </ProgramProvider>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <ProgramProvider>
+            <WorkoutProvider>
+              <BodyProvider>
+                <GoalProvider>
+                  <App />
+                </GoalProvider>
+              </BodyProvider>
+            </WorkoutProvider>
+          </ProgramProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   </React.StrictMode>,
 )

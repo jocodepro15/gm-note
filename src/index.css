@@ -40,3 +40,46 @@ body {
            focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
   }
 }
+
+/* ===== Mode clair ===== */
+[data-theme="light"] {
+  background-color: #f3f4f6;
+  color: #111827;
+}
+
+[data-theme="light"] .bg-gray-900 { background-color: #f3f4f6 !important; }
+[data-theme="light"] .bg-gray-800 { background-color: #ffffff !important; }
+[data-theme="light"] .bg-gray-700 { background-color: #e5e7eb !important; }
+[data-theme="light"] .bg-gray-750 { background-color: #f9fafb !important; }
+
+[data-theme="light"] .text-gray-100 { color: #111827 !important; }
+[data-theme="light"] .text-gray-200 { color: #1f2937 !important; }
+[data-theme="light"] .text-gray-300 { color: #374151 !important; }
+[data-theme="light"] .text-gray-400 { color: #6b7280 !important; }
+[data-theme="light"] .text-gray-500 { color: #9ca3af !important; }
+[data-theme="light"] .text-white { color: #111827 !important; }
+
+[data-theme="light"] .border-gray-700 { border-color: #d1d5db !important; }
+[data-theme="light"] .border-gray-600 { border-color: #e5e7eb !important; }
+
+[data-theme="light"] .input {
+  background-color: #f3f4f6 !important;
+  border-color: #d1d5db !important;
+  color: #111827 !important;
+}
+
+[data-theme="light"] .input::placeholder { color: #9ca3af !important; }
+
+[data-theme="light"] .shadow-lg {
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05) !important;
+}
+
+[data-theme="light"] .focus\:ring-offset-gray-900 {
+  --tw-ring-offset-color: #f3f4f6 !important;
+}
+
+/* Select et option en mode clair */
+[data-theme="light"] select option {
+  background-color: #ffffff;
+  color: #111827;
+}

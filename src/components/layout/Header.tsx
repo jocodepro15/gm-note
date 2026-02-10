@@ -1,8 +1,9 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 
 const navItems = [
-  { path: '/', label: 'Dashboard' },
+  { path: '/', label: 'Accueil' },
   { path: '/new', label: 'Mes séances' },
   { path: '/programmes', label: 'Programmes' },
   { path: '/history', label: 'Historique' },
@@ -17,6 +18,7 @@ const navItems = [
 export default function Header() {
   const location = useLocation();
   const { displayName, signOut } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <header className="bg-gray-800 shadow-lg border-b border-gray-700">
@@ -26,6 +28,13 @@ export default function Header() {
           GM NOTE
         </Link>
         <div className="flex items-center gap-3">
+          <button
+            onClick={toggleTheme}
+            className="text-lg hover:opacity-75 transition-opacity"
+            title={theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
+          >
+            {theme === 'dark' ? '☀️' : '🌙'}
+          </button>
           <span className="text-sm text-gray-400">{displayName}</span>
           <button
             onClick={signOut}
