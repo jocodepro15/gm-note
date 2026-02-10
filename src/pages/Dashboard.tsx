@@ -307,7 +307,7 @@ export default function Dashboard() {
                         </div>
                         {!workout.completed && (
                           <Link
-                            to="/new"
+                            to={`/edit/${workout.id}`}
                             className="text-xs text-primary-400 hover:text-primary-300 font-medium"
                           >
                             Reprendre →

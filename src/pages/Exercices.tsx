@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react';
 import { exercisesList, exerciseCategories, ExerciseInfo } from '../data/exercises';
+import { useWorkouts } from '../context/WorkoutContext';
 import Card from '../components/ui/Card';
 
-// Icônes par catégorie (emoji placeholder)
+// Icônes par catégorie
 const categoryIcons: Record<string, string> = {
   'Dos': '🔙',
   'Biceps': '💪',
@@ -33,17 +34,16 @@ const categoryColors: Record<string, string> = {
 export default function Exercices() {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const { workouts } = useWorkouts();
 
   // Filtrer les exercices
   const filteredExercises = useMemo(() => {
     let result = exercisesList;
 
-    // Filtre par catégorie
     if (selectedCategory) {
       result = result.filter(ex => ex.category === selectedCategory);
     }
 
-    // Filtre par recherche
     if (search.trim()) {
       const lowerSearch = search.toLowerCase();
       result = result.filter(ex =>
@@ -68,7 +68,6 @@ export default function Exercices() {
       groups[firstLetter].push(ex);
     });
 
-    // Trier les lettres
     return Object.keys(groups)
       .sort()
       .map(letter => ({
@@ -77,12 +76,10 @@ export default function Exercices() {
       }));
   }, [filteredExercises]);
 
-  // Lettres disponibles pour l'index
   const availableLetters = useMemo(() => {
     return groupedExercises.map(g => g.letter);
   }, [groupedExercises]);
 
-  // Scroll vers une lettre
   const scrollToLetter = (letter: string) => {
     const element = document.getElementById(`letter-${letter}`);
     if (element) {
@@ -177,7 +174,7 @@ export default function Exercices() {
                 </h2>
                 <div className="space-y-2">
                   {exercises.map((exercise) => (
-                    <ExerciseCard key={exercise.id} exercise={exercise} />
+                    <ExerciseCard key={exercise.id} exercise={exercise} workouts={workouts} />
                   ))}
                 </div>
               </div>
@@ -210,9 +207,54 @@ export default function Exercices() {
   );
 }
 
-// Composant pour afficher un exercice
-function ExerciseCard({ exercise }: { exercise: ExerciseInfo }) {
+// Composant pour afficher un exercice avec son historique
+import { Workout } from '../types';
+
+function ExerciseCard({ exercise, workouts }: { exercise: ExerciseInfo; workouts: Workout[] }) {
   const [showDetails, setShowDetails] = useState(false);
+
+  // Historique de cet exercice dans les séances
+  const exerciseHistory = useMemo(() => {
+    if (!showDetails) return [];
+
+    const history: Array<{
+      date: string;
+      maxWeight: number;
+      totalVolume: number;
+      totalSets: number;
+      bestSet: string;
+    }> = [];
+
+    const sortedWorkouts = [...workouts].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+
+    for (const w of sortedWorkouts) {
+      for (const ex of w.exercises) {
+        if (ex.name.toLowerCase() === exercise.name.toLowerCase()) {
+          const completedSets = ex.sets.filter(s => s.completed);
+          if (completedSets.length === 0) continue;
+
+          const maxWeight = Math.max(...completedSets.map(s => s.weight));
+          const totalVolume = completedSets.reduce((sum, s) => sum + s.weight * s.reps, 0);
+          const bestSetData = completedSets.reduce((best, s) =>
+            s.weight > best.weight ? s : best, completedSets[0]);
+
+          history.push({
+            date: new Date(w.date).toLocaleDateString('fr-FR', {
+              day: 'numeric', month: 'short', year: 'numeric',
+            }),
+            maxWeight,
+            totalVolume,
+            totalSets: completedSets.length,
+            bestSet: `${bestSetData.weight}kg x ${bestSetData.reps}`,
+          });
+        }
+      }
+    }
+
+    return history.slice(0, 10); // 10 dernières apparitions
+  }, [showDetails, workouts, exercise.name]);
 
   return (
     <Card
@@ -220,25 +262,21 @@ function ExerciseCard({ exercise }: { exercise: ExerciseInfo }) {
       className="cursor-pointer hover:bg-gray-750 transition-colors"
     >
       <div className="flex items-center gap-3">
-        {/* Icône placeholder */}
         <div className={`w-12 h-12 rounded-lg flex items-center justify-center text-2xl ${categoryColors[exercise.category] || 'bg-gray-700'}`}>
           {categoryIcons[exercise.category] || '🏋️'}
         </div>
 
-        {/* Infos */}
         <div className="flex-1 min-w-0">
           <h3 className="font-medium text-gray-100 truncate">{exercise.name}</h3>
           <p className="text-sm text-gray-400">{exercise.category}</p>
         </div>
 
-        {/* Équipement */}
         {exercise.equipment && (
           <span className="text-xs text-gray-500 hidden sm:block">
             {exercise.equipment}
           </span>
         )}
 
-        {/* Chevron */}
         <svg
           className={`w-5 h-5 text-gray-500 transition-transform ${showDetails ? 'rotate-180' : ''}`}
           fill="none"
@@ -249,10 +287,9 @@ function ExerciseCard({ exercise }: { exercise: ExerciseInfo }) {
         </svg>
       </div>
 
-      {/* Détails expandables */}
       {showDetails && (
         <div className="mt-3 pt-3 border-t border-gray-700">
-          <div className="grid grid-cols-2 gap-2 text-sm">
+          <div className="grid grid-cols-2 gap-2 text-sm mb-3">
             <div>
               <span className="text-gray-500">Catégorie:</span>
               <span className="ml-2 text-gray-300">{exercise.category}</span>
@@ -264,8 +301,26 @@ function ExerciseCard({ exercise }: { exercise: ExerciseInfo }) {
               </div>
             )}
           </div>
-          {exercise.description && (
-            <p className="mt-2 text-sm text-gray-400">{exercise.description}</p>
+
+          {/* Historique des performances */}
+          {exerciseHistory.length > 0 ? (
+            <div>
+              <h4 className="text-sm font-semibold text-primary-400 mb-2">Historique des performances</h4>
+              <div className="space-y-1.5">
+                {exerciseHistory.map((entry, i) => (
+                  <div key={i} className="flex items-center justify-between bg-gray-900 rounded-lg px-3 py-2 text-sm">
+                    <span className="text-gray-400">{entry.date}</span>
+                    <div className="flex gap-3 text-xs">
+                      <span className="text-gray-300">{entry.bestSet}</span>
+                      <span className="text-gray-500">{entry.totalSets} séries</span>
+                      <span className="text-primary-400">{entry.totalVolume.toLocaleString('fr-FR')} kg</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500 italic">Aucune performance enregistrée</p>
           )}
         </div>
       )}

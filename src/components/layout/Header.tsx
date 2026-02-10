@@ -10,6 +10,7 @@ const navItems = [
   { path: '/timer', label: 'Chrono' },
   { path: '/calc', label: 'Calcul' },
   { path: '/infos', label: 'Infos' },
+  { path: '/profile', label: 'Profil' },
 ];
 
 export default function Header() {

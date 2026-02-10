@@ -1,10 +1,13 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useWorkouts } from '../context/WorkoutContext';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
+import { v4 as uuidv4 } from 'uuid';
 
 export default function History() {
-  const { workouts, deleteWorkout } = useWorkouts();
+  const navigate = useNavigate();
+  const { workouts, deleteWorkout, addWorkout } = useWorkouts();
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Trie les séances par date décroissante
@@ -169,7 +172,51 @@ export default function History() {
                   </div>
                 )}
 
-                <div className="mt-4 flex justify-end">
+                <div className="mt-4 flex justify-end gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/edit/${workout.id}`);
+                    }}
+                  >
+                    Modifier
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      if (confirm('Dupliquer cette séance avec les mêmes exercices et poids ?')) {
+                        await addWorkout({
+                          date: new Date().toISOString(),
+                          dayType: workout.dayType,
+                          sessionName: workout.sessionName,
+                          generalNotes: '',
+                          completed: false,
+                          exercises: workout.exercises.map((ex, i) => ({
+                            id: uuidv4(),
+                            name: ex.name,
+                            rm: ex.rm,
+                            notes: '',
+                            exerciseOrder: i,
+                            sets: ex.sets.map((s, j) => ({
+                              id: uuidv4(),
+                              setNumber: j + 1,
+                              reps: s.reps,
+                              weight: s.weight,
+                              rir: s.rir,
+                              completed: false,
+                            })),
+                          })),
+                        });
+                        alert('Séance dupliquée !');
+                      }
+                    }}
+                  >
+                    Dupliquer
+                  </Button>
                   <Button
                     variant="danger"
                     size="sm"

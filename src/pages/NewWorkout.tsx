@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useWorkouts } from '../context/WorkoutContext';
 import { usePrograms } from '../context/ProgramContext';
 import { DayType, Exercise, Set, DayProgram } from '../types';
@@ -12,13 +12,15 @@ const dayNames: DayType[] = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 
 
 export default function NewWorkout() {
   const navigate = useNavigate();
-  const { addWorkout, createWorkoutFromTemplate } = useWorkouts();
+  const { workoutId } = useParams<{ workoutId: string }>();
+  const { workouts, addWorkout, updateWorkout, createWorkoutFromTemplate } = useWorkouts();
   const { programs, updateProgram, addProgram } = usePrograms();
+  const isEditMode = !!workoutId;
+  const existingWorkout = isEditMode ? workouts.find(w => w.id === workoutId) : null;
 
   // Jour actuel
   const today = new Date();
   const todayIndex = today.getDay();
-  // dimanche = 0, donc on gère ça
   const defaultDay = todayIndex === 0 ? 'dimanche' : dayNames[todayIndex - 1];
 
   // Crée un workout à partir des données d'un programme
@@ -38,20 +40,91 @@ export default function NewWorkout() {
       ],
       exerciseOrder: index,
     })),
+    generalNotes: '',
     completed: false,
   });
 
-  const [selectedDay, setSelectedDay] = useState<DayType>(defaultDay);
+  const [selectedDay, setSelectedDay] = useState<DayType>(existingWorkout?.dayType || defaultDay);
   const [selectedProgram, setSelectedProgram] = useState<DayProgram | null>(() => {
+    if (isEditMode) return null;
     return programs.find(p => p.dayType === defaultDay) || programs[0] || null;
   });
   const [workout, setWorkout] = useState(() => {
+    if (existingWorkout) return existingWorkout;
     const program = programs.find(p => p.dayType === defaultDay) || programs[0];
     if (program) {
       return makeWorkoutFromProgram(program, defaultDay);
     }
     return createWorkoutFromTemplate(defaultDay);
   });
+
+  // Timer de repos
+  const [restTimer, setRestTimer] = useState<number | null>(null);
+  const restDuration = 90; // Durée par défaut en secondes
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const audioRef = useRef<AudioContext | null>(null);
+
+  // Notification sonore
+  const playBeep = useCallback(() => {
+    try {
+      const ctx = audioRef.current || new AudioContext();
+      audioRef.current = ctx;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 800;
+      gain.gain.value = 0.3;
+      osc.start();
+      osc.stop(ctx.currentTime + 0.3);
+      // Double beep
+      setTimeout(() => {
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        osc2.frequency.value = 1000;
+        gain2.gain.value = 0.3;
+        osc2.start();
+        osc2.stop(ctx.currentTime + 0.3);
+      }, 400);
+    } catch {
+      // Audio non supporté
+    }
+  }, []);
+
+  // Gestion du timer
+  useEffect(() => {
+    if (restTimer !== null && restTimer > 0) {
+      timerRef.current = setInterval(() => {
+        setRestTimer(prev => {
+          if (prev !== null && prev <= 1) {
+            playBeep();
+            return 0;
+          }
+          return prev !== null ? prev - 1 : null;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [restTimer !== null && restTimer > 0, playBeep]);
+
+  const startRestTimer = () => {
+    setRestTimer(restDuration);
+  };
+
+  const stopRestTimer = () => {
+    setRestTimer(null);
+    if (timerRef.current) clearInterval(timerRef.current);
+  };
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
 
   // Change le jour sélectionné
   const handleDayChange = (day: DayType) => {
@@ -101,6 +174,11 @@ export default function NewWorkout() {
           : ex
       ),
     }));
+
+    // Lance le timer quand on complète une série
+    if (field === 'completed' && value === true) {
+      startRestTimer();
+    }
   };
 
   // Met à jour le RM d'un exercice
@@ -155,16 +233,41 @@ export default function NewWorkout() {
     }));
   };
 
+  // Supprime une série d'un exercice
+  const deleteSet = (exerciseId: string, setId: string) => {
+    setWorkout((prev) => ({
+      ...prev,
+      exercises: prev.exercises.map((ex) =>
+        ex.id === exerciseId
+          ? {
+              ...ex,
+              sets: ex.sets
+                .filter((s) => s.id !== setId)
+                .map((s, i) => ({ ...s, setNumber: i + 1 })), // Renuméroter
+            }
+          : ex
+      ),
+    }));
+  };
+
   // Ajoute un nouvel exercice
   const [showAddExercise, setShowAddExercise] = useState(false);
+  const [showGeneralNotes, setShowGeneralNotes] = useState(false);
 
   // Sauvegarde la séance
   const handleSave = async (completed: boolean) => {
-    await addWorkout({
-      ...workout,
-      date: new Date().toISOString(),
-      completed,
-    });
+    if (isEditMode && workoutId) {
+      await updateWorkout(workoutId, {
+        ...workout,
+        completed,
+      });
+    } else {
+      await addWorkout({
+        ...workout,
+        date: new Date().toISOString(),
+        completed,
+      });
+    }
     navigate('/');
   };
 
@@ -204,7 +307,7 @@ export default function NewWorkout() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-100">Mes séances</h1>
+        <h1 className="text-2xl font-bold text-gray-100">{isEditMode ? 'Modifier la séance' : 'Mes séances'}</h1>
         <button
           onClick={handleReset}
           className="text-sm text-gray-400 hover:text-gray-200"
@@ -280,6 +383,7 @@ export default function NewWorkout() {
             onUpdateRM={(rm) => updateExerciseRM(exercise.id, rm)}
             onUpdateNotes={(notes) => updateExerciseNotes(exercise.id, notes)}
             onAddSet={() => addSet(exercise.id)}
+            onDeleteSet={(setId) => deleteSet(exercise.id, setId)}
             onDelete={() => deleteExercise(exercise.id)}
           />
         ))}
@@ -328,6 +432,27 @@ export default function NewWorkout() {
         </button>
       </div>
 
+      {/* Notes générales */}
+      <div>
+        <button
+          onClick={() => setShowGeneralNotes(!showGeneralNotes)}
+          className="text-sm text-gray-400 hover:text-gray-200 font-medium"
+        >
+          {showGeneralNotes || workout.generalNotes ? '− Masquer notes générales' : '+ Ajouter des notes générales'}
+        </button>
+        {(showGeneralNotes || workout.generalNotes) && (
+          <div className="mt-2">
+            <textarea
+              value={workout.generalNotes || ''}
+              onChange={(e) => setWorkout(prev => ({ ...prev, generalNotes: e.target.value }))}
+              className="input text-sm resize-none w-full"
+              rows={3}
+              placeholder="Ressenti général, fatigue, forme du jour..."
+            />
+          </div>
+        )}
+      </div>
+
       {/* Boutons de sauvegarde */}
       <div className="flex gap-3">
         <Button variant="secondary" onClick={() => handleSave(false)} className="flex-1">
@@ -337,6 +462,50 @@ export default function NewWorkout() {
           Terminer la séance
         </Button>
       </div>
+
+      {/* Timer de repos flottant */}
+      {restTimer !== null && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-gray-800 border border-gray-600 rounded-2xl shadow-2xl px-6 py-4 flex items-center gap-4 z-50">
+          <div className={`text-3xl font-bold font-mono ${restTimer === 0 ? 'text-green-400' : 'text-primary-400'}`}>
+            {formatTime(restTimer)}
+          </div>
+          <div className="flex flex-col gap-1">
+            <div className="flex gap-1">
+              <button
+                onClick={() => setRestTimer(prev => prev !== null ? prev + 15 : null)}
+                className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 rounded"
+              >
+                +15s
+              </button>
+              <button
+                onClick={() => setRestTimer(prev => prev !== null ? Math.max(0, prev - 15) : null)}
+                className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 rounded"
+              >
+                -15s
+              </button>
+            </div>
+            <div className="flex gap-1">
+              <button
+                onClick={startRestTimer}
+                className="px-2 py-1 text-xs bg-primary-600 hover:bg-primary-500 text-white rounded"
+              >
+                Relancer
+              </button>
+              <button
+                onClick={stopRestTimer}
+                className="px-2 py-1 text-xs bg-red-600 hover:bg-red-500 text-white rounded"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+          {restTimer === 0 && (
+            <div className="text-green-400 text-sm font-semibold animate-pulse">
+              GO !
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -348,10 +517,11 @@ interface ExerciseCardProps {
   onUpdateRM: (rm: number) => void;
   onUpdateNotes: (notes: string) => void;
   onAddSet: () => void;
+  onDeleteSet: (setId: string) => void;
   onDelete: () => void;
 }
 
-function ExerciseCard({ exercise, onUpdateSet, onUpdateRM, onUpdateNotes, onAddSet, onDelete }: ExerciseCardProps) {
+function ExerciseCard({ exercise, onUpdateSet, onUpdateRM, onUpdateNotes, onAddSet, onDeleteSet, onDelete }: ExerciseCardProps) {
   const [showNotes, setShowNotes] = useState(false);
 
   return (
@@ -383,24 +553,23 @@ function ExerciseCard({ exercise, onUpdateSet, onUpdateRM, onUpdateNotes, onAddS
       </div>
 
       {/* En-tête des colonnes */}
-      <div className="grid grid-cols-6 gap-2 text-xs text-gray-400 uppercase tracking-wide mb-2 px-1">
+      <div className="grid grid-cols-7 gap-1.5 text-xs text-gray-400 uppercase tracking-wide mb-2 px-1">
         <div>Série</div>
         <div>Kg</div>
         <div>%RM</div>
         <div>Reps</div>
         <div>RIR</div>
         <div>OK</div>
+        <div></div>
       </div>
 
       {/* Séries */}
       <div className="space-y-2">
         {exercise.sets.map((set) => {
-          // Calcul du pourcentage de RM
           const percentRM = exercise.rm && set.weight
             ? Math.round((set.weight / exercise.rm) * 100)
             : null;
 
-          // Couleur selon l'intensité
           const getPercentColor = (percent: number) => {
             if (percent >= 90) return 'text-red-600 bg-red-50';
             if (percent >= 80) return 'text-orange-600 bg-orange-50';
@@ -409,7 +578,7 @@ function ExerciseCard({ exercise, onUpdateSet, onUpdateRM, onUpdateNotes, onAddS
           };
 
           return (
-            <div key={set.id} className="grid grid-cols-6 gap-2 items-center">
+            <div key={set.id} className="grid grid-cols-7 gap-1.5 items-center">
               <div className="text-sm font-medium text-gray-300">{set.setNumber}</div>
               <input
                 type="number"
@@ -449,6 +618,16 @@ function ExerciseCard({ exercise, onUpdateSet, onUpdateRM, onUpdateNotes, onAddS
               >
                 ✓
               </button>
+              {/* Supprimer la série */}
+              {exercise.sets.length > 1 && (
+                <button
+                  onClick={() => onDeleteSet(set.id)}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 hover:text-red-400 hover:bg-red-900/20 transition-colors"
+                  title="Supprimer la série"
+                >
+                  ✕
+                </button>
+              )}
             </div>
           );
         })}

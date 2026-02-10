@@ -9,6 +9,7 @@ import Calculatrice from './pages/Calculatrice'
 import Chronometre from './pages/Chronometre'
 import Programmes from './pages/Programmes'
 import Progression from './pages/Progression'
+import Profile from './pages/Profile'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 
@@ -60,12 +61,14 @@ function App() {
       {/* Routes protégées */}
       <Route path="/" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
       <Route path="/new" element={<ProtectedRoute><Layout><NewWorkout /></Layout></ProtectedRoute>} />
+      <Route path="/edit/:workoutId" element={<ProtectedRoute><Layout><NewWorkout /></Layout></ProtectedRoute>} />
       <Route path="/history" element={<ProtectedRoute><Layout><History /></Layout></ProtectedRoute>} />
       <Route path="/timer" element={<ProtectedRoute><Layout><Chronometre /></Layout></ProtectedRoute>} />
       <Route path="/calc" element={<ProtectedRoute><Layout><Calculatrice /></Layout></ProtectedRoute>} />
       <Route path="/infos" element={<ProtectedRoute><Layout><Informations /></Layout></ProtectedRoute>} />
       <Route path="/programmes" element={<ProtectedRoute><Layout><Programmes /></Layout></ProtectedRoute>} />
       <Route path="/progression" element={<ProtectedRoute><Layout><Progression /></Layout></ProtectedRoute>} />
+      <Route path="/profile" element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
