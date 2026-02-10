@@ -159,7 +159,7 @@ export default function Suivi() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 pb-6">
       <h1 className="text-2xl font-bold text-white">Suivi du corps</h1>
 
       {/* Tabs */}
@@ -211,21 +211,21 @@ export default function Suivi() {
 
           {/* Stats */}
           {weightStats && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <Card className="text-center">
-                <div className="text-2xl font-bold text-green-400">{weightStats.current} kg</div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <Card className="text-center !p-3">
+                <div className="text-xl font-bold text-green-400">{weightStats.current} kg</div>
                 <div className="text-xs text-gray-400">Actuel</div>
               </Card>
-              <Card className="text-center">
-                <div className="text-2xl font-bold text-blue-400">{weightStats.min} kg</div>
+              <Card className="text-center !p-3">
+                <div className="text-xl font-bold text-blue-400">{weightStats.min} kg</div>
                 <div className="text-xs text-gray-400">Min</div>
               </Card>
-              <Card className="text-center">
-                <div className="text-2xl font-bold text-red-400">{weightStats.max} kg</div>
+              <Card className="text-center !p-3">
+                <div className="text-xl font-bold text-red-400">{weightStats.max} kg</div>
                 <div className="text-xs text-gray-400">Max</div>
               </Card>
-              <Card className="text-center">
-                <div className={`text-2xl font-bold ${
+              <Card className="text-center !p-3">
+                <div className={`text-xl font-bold ${
                   weightStats.delta30 !== null
                     ? weightStats.delta30 >= 0 ? 'text-yellow-400' : 'text-green-400'
                     : 'text-gray-500'
@@ -482,7 +482,7 @@ export default function Suivi() {
                         <div className="text-sm text-gray-400 mb-1">
                           {new Date(w.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long' })}
                         </div>
-                        <div className="flex gap-4 text-sm">
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
                           <span className="text-blue-400">Sommeil: {w.sleepQuality}/5</span>
                           <span className="text-green-400">Énergie: {w.energyLevel}/5</span>
                           <span className="text-red-400">Courbatures: {w.muscleSoreness}/5</span>
