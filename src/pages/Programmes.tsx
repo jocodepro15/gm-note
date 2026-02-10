@@ -3,6 +3,7 @@ import { usePrograms } from '../context/ProgramContext';
 import { DayProgram, DayType } from '../types';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
+import ExerciseSelector from '../components/ExerciseSelector';
 
 const dayTypes: DayType[] = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
 
@@ -39,30 +40,6 @@ export default function Programmes() {
       exercises: [...program.exercises],
     });
     setShowForm(true);
-  };
-
-  // Ajoute un champ exercice
-  const addExerciseField = () => {
-    setFormData((prev) => ({
-      ...prev,
-      exercises: [...prev.exercises, ''],
-    }));
-  };
-
-  // Supprime un champ exercice
-  const removeExerciseField = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      exercises: prev.exercises.filter((_, i) => i !== index),
-    }));
-  };
-
-  // Met à jour un exercice
-  const updateExercise = (index: number, value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      exercises: prev.exercises.map((ex, i) => (i === index ? value : ex)),
-    }));
   };
 
   // Sauvegarde le programme
@@ -182,40 +159,10 @@ export default function Programmes() {
             </div>
 
             {/* Exercices */}
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">
-                Exercices
-              </label>
-              <div className="space-y-2">
-                {formData.exercises.map((ex, index) => (
-                  <div key={index} className="flex gap-2">
-                    <input
-                      type="text"
-                      value={ex}
-                      onChange={(e) => updateExercise(index, e.target.value)}
-                      className="input flex-1"
-                      placeholder={`Exercice ${index + 1}`}
-                    />
-                    {formData.exercises.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeExerciseField(index)}
-                        className="px-3 py-2 text-red-400 hover:bg-red-900/30 rounded-lg"
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={addExerciseField}
-                  className="text-sm text-primary-400 hover:text-primary-300 font-medium"
-                >
-                  + Ajouter un exercice
-                </button>
-              </div>
-            </div>
+            <ExerciseListEditor
+              exercises={formData.exercises}
+              onUpdate={(exercises) => setFormData({ ...formData, exercises })}
+            />
 
             {/* Boutons */}
             <div className="flex gap-3 pt-2">
@@ -285,6 +232,65 @@ export default function Programmes() {
             )}
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// Composant pour gérer la liste d'exercices avec le sélecteur
+interface ExerciseListEditorProps {
+  exercises: string[];
+  onUpdate: (exercises: string[]) => void;
+}
+
+function ExerciseListEditor({ exercises, onUpdate }: ExerciseListEditorProps) {
+  const [showSelector, setShowSelector] = useState(false);
+
+  const removeExercise = (index: number) => {
+    onUpdate(exercises.filter((_, i) => i !== index));
+  };
+
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-300 mb-1">
+        Exercices
+      </label>
+      <div className="space-y-2">
+        {/* Liste des exercices ajoutés */}
+        {exercises.filter(ex => ex.trim() !== '').map((ex, index) => (
+          <div key={index} className="flex items-center gap-2 bg-gray-700 rounded-lg px-3 py-2">
+            <span className="text-sm text-gray-200 flex-1">{ex}</span>
+            <button
+              type="button"
+              onClick={() => removeExercise(index)}
+              className="p-1 text-red-400 hover:bg-red-900/30 rounded transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
+        ))}
+
+        {/* Sélecteur d'exercice */}
+        {showSelector ? (
+          <ExerciseSelector
+            onSelect={(name) => {
+              const filtered = exercises.filter(ex => ex.trim() !== '');
+              onUpdate([...filtered, name]);
+              setShowSelector(false);
+            }}
+            onCancel={() => setShowSelector(false)}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowSelector(true)}
+            className="w-full py-2.5 border-2 border-dashed border-gray-600 rounded-xl text-sm text-gray-400 hover:border-primary-400 hover:text-primary-400 transition-colors"
+          >
+            + Ajouter un exercice
+          </button>
+        )}
       </div>
     </div>
   );

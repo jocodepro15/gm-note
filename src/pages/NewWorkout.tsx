@@ -5,6 +5,7 @@ import { usePrograms } from '../context/ProgramContext';
 import { DayType, Exercise, Set, DayProgram } from '../types';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
+import ExerciseSelector from '../components/ExerciseSelector';
 import { v4 as uuidv4 } from 'uuid';
 
 const dayNames: DayType[] = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
@@ -155,32 +156,7 @@ export default function NewWorkout() {
   };
 
   // Ajoute un nouvel exercice
-  const [newExerciseName, setNewExerciseName] = useState('');
   const [showAddExercise, setShowAddExercise] = useState(false);
-
-  const addExercise = () => {
-    if (!newExerciseName.trim()) return;
-
-    const newExercise: Exercise = {
-      id: uuidv4(),
-      name: newExerciseName.trim(),
-      sets: [
-        { id: uuidv4(), setNumber: 1, reps: 0, weight: 0, completed: false },
-        { id: uuidv4(), setNumber: 2, reps: 0, weight: 0, completed: false },
-        { id: uuidv4(), setNumber: 3, reps: 0, weight: 0, completed: false },
-        { id: uuidv4(), setNumber: 4, reps: 0, weight: 0, completed: false },
-      ],
-      exerciseOrder: workout.exercises.length,
-    };
-
-    setWorkout((prev) => ({
-      ...prev,
-      exercises: [...prev.exercises, newExercise],
-    }));
-
-    setNewExerciseName('');
-    setShowAddExercise(false);
-  };
 
   // Sauvegarde la séance
   const handleSave = async (completed: boolean) => {
@@ -310,34 +286,27 @@ export default function NewWorkout() {
 
         {/* Ajouter un exercice */}
         {showAddExercise ? (
-          <Card className="border-dashed border-2 border-gray-600">
-            <div className="space-y-3">
-              <input
-                type="text"
-                value={newExerciseName}
-                onChange={(e) => setNewExerciseName(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && addExercise()}
-                className="input"
-                placeholder="Nom de l'exercice"
-                autoFocus
-              />
-              <div className="flex gap-2">
-                <Button onClick={addExercise} size="sm" className="flex-1">
-                  Ajouter
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => {
-                    setShowAddExercise(false);
-                    setNewExerciseName('');
-                  }}
-                >
-                  Annuler
-                </Button>
-              </div>
-            </div>
-          </Card>
+          <ExerciseSelector
+            onSelect={(name) => {
+              const newExercise: Exercise = {
+                id: uuidv4(),
+                name,
+                sets: [
+                  { id: uuidv4(), setNumber: 1, reps: 0, weight: 0, completed: false },
+                  { id: uuidv4(), setNumber: 2, reps: 0, weight: 0, completed: false },
+                  { id: uuidv4(), setNumber: 3, reps: 0, weight: 0, completed: false },
+                  { id: uuidv4(), setNumber: 4, reps: 0, weight: 0, completed: false },
+                ],
+                exerciseOrder: workout.exercises.length,
+              };
+              setWorkout((prev) => ({
+                ...prev,
+                exercises: [...prev.exercises, newExercise],
+              }));
+              setShowAddExercise(false);
+            }}
+            onCancel={() => setShowAddExercise(false)}
+          />
         ) : (
           <button
             onClick={() => setShowAddExercise(true)}
