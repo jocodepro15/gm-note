@@ -3,6 +3,11 @@ import { useWorkouts } from '../context/WorkoutContext';
 import { Workout } from '../types';
 import Card from '../components/ui/Card';
 import { clearTestData } from '../utils/generateTestData';
+import { calculate1RM, formatDate, formatFullDate, darkTooltipStyle } from '../utils/calcUtils';
+import WeeklyTonnageChart from '../components/progression/WeeklyTonnageChart';
+import MuscleFrequencyChart from '../components/progression/MuscleFrequencyChart';
+import SessionComparison from '../components/progression/SessionComparison';
+import StrengthCurveChart from '../components/progression/StrengthCurveChart';
 import {
   LineChart,
   Line,
@@ -23,29 +28,6 @@ function periodLabel(months: number): string {
   if (months === 12) return '1 an';
   if (months === 24) return '2 ans';
   return `${months} mois`;
-}
-
-// Calcul du 1RM estimé (formule d'Epley)
-function calculate1RM(weight: number, reps: number): number {
-  if (reps === 1) return weight;
-  if (reps === 0 || weight === 0) return 0;
-  return Math.round(weight * (1 + reps / 30));
-}
-
-// Formater la date pour l'affichage
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
-}
-
-// Formater la date complète
-function formatFullDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('fr-FR', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric'
-  });
 }
 
 export default function Progression() {
@@ -419,11 +401,7 @@ export default function Progression() {
                 <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} />
                 <YAxis stroke="#9ca3af" fontSize={12} />
                 <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#1f2937',
-                    border: '1px solid #374151',
-                    borderRadius: '8px',
-                  }}
+                  contentStyle={darkTooltipStyle}
                   labelFormatter={(_, payload) => payload[0]?.payload?.fullDate || ''}
                   formatter={(value: unknown) => [`${Number(value).toLocaleString()} kg`, 'Volume']}
                 />
@@ -441,6 +419,9 @@ export default function Progression() {
           <p className="text-gray-400 text-center py-8">Pas assez de données</p>
         )}
       </Card>
+
+      {/* Tonnage hebdomadaire */}
+      <WeeklyTonnageChart workouts={filteredWorkouts} months={months} />
 
       {/* Évolution du RM par exercice */}
       <Card>
@@ -506,11 +487,7 @@ export default function Progression() {
                   <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} />
                   <YAxis stroke="#9ca3af" fontSize={12} domain={['dataMin - 5', 'dataMax + 5']} />
                   <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#1f2937',
-                      border: '1px solid #374151',
-                      borderRadius: '8px',
-                    }}
+                    contentStyle={darkTooltipStyle}
                     labelFormatter={(_, payload) => payload[0]?.payload?.fullDate || ''}
                     formatter={(value: unknown) => [`${value} kg`, 'RM']}
                   />
@@ -534,6 +511,15 @@ export default function Progression() {
           </div>
         ) : null}
       </Card>
+
+      {/* Courbes de force (1RM estimé multi-exercices) */}
+      <StrengthCurveChart workouts={workouts} />
+
+      {/* Fréquence par groupe musculaire */}
+      <MuscleFrequencyChart workouts={filteredWorkouts} months={months} />
+
+      {/* Comparaison de séances */}
+      <SessionComparison workouts={workouts} />
 
       {/* Progression récente */}
       {recentProgress.length > 0 && (

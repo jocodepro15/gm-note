@@ -3,6 +3,7 @@ import { useWorkouts } from '../context/WorkoutContext';
 import { usePrograms } from '../context/ProgramContext';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
+import DeloadBanner from '../components/dashboard/DeloadBanner';
 import { Workout } from '../types';
 
 // Icône selon le type de séance
@@ -123,6 +124,9 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Banner deload si nécessaire */}
+      <DeloadBanner workouts={workouts} />
+
       {/* 1. Message de bienvenue */}
       <p className="text-lg text-gray-300">{welcomeMessage}</p>
 

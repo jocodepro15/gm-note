@@ -10,6 +10,7 @@ import Chronometre from './pages/Chronometre'
 import Programmes from './pages/Programmes'
 import Progression from './pages/Progression'
 import Profile from './pages/Profile'
+import Suivi from './pages/Suivi'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 
@@ -68,6 +69,7 @@ function App() {
       <Route path="/infos" element={<ProtectedRoute><Layout><Informations /></Layout></ProtectedRoute>} />
       <Route path="/programmes" element={<ProtectedRoute><Layout><Programmes /></Layout></ProtectedRoute>} />
       <Route path="/progression" element={<ProtectedRoute><Layout><Progression /></Layout></ProtectedRoute>} />
+      <Route path="/suivi" element={<ProtectedRoute><Layout><Suivi /></Layout></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
 
       {/* Fallback */}

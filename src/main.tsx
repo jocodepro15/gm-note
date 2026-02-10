@@ -5,6 +5,7 @@ import App from './App'
 import { AuthProvider } from './context/AuthContext'
 import { WorkoutProvider } from './context/WorkoutContext'
 import { ProgramProvider } from './context/ProgramContext'
+import { BodyProvider } from './context/BodyContext'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -13,7 +14,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <AuthProvider>
         <ProgramProvider>
           <WorkoutProvider>
-            <App />
+            <BodyProvider>
+              <App />
+            </BodyProvider>
           </WorkoutProvider>
         </ProgramProvider>
       </AuthProvider>

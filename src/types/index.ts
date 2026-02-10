@@ -19,6 +19,7 @@ export interface Exercise {
   rm?: number; // Rep Max - charge maximale en kg
   notes?: string;
   exerciseOrder: number;
+  supersetGroup?: number; // exercices avec le même numéro forment un superset
 }
 
 export interface Workout {
@@ -40,4 +41,30 @@ export interface DayProgram {
   focus: string;
   exercises: string[];
   isCustom?: boolean; // true si créé par l'utilisateur
+}
+
+// Types pour le suivi du corps
+
+export interface BodyWeight {
+  id: string;
+  date: string; // YYYY-MM-DD
+  weight: number; // kg
+}
+
+export type MeasurementType = 'bras' | 'cuisses' | 'poitrine' | 'taille' | 'mollets' | 'cou';
+
+export interface Measurement {
+  id: string;
+  date: string; // YYYY-MM-DD
+  type: MeasurementType;
+  value: number; // cm
+}
+
+export interface DailyWellness {
+  id: string;
+  date: string; // YYYY-MM-DD
+  sleepQuality: number; // 1-5
+  energyLevel: number; // 1-5
+  muscleSoreness: number; // 1-5
+  notes?: string;
 }

@@ -1,14 +1,65 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useWorkouts } from '../context/WorkoutContext';
 import { usePrograms } from '../context/ProgramContext';
-import { DayType, Exercise, Set, DayProgram } from '../types';
+import { DayType, DayProgram } from '../types';
+import type { Exercise, Set, Workout } from '../types';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import ExerciseSelector from '../components/ExerciseSelector';
+import ExerciseCard from '../components/workout/ExerciseCard';
+import SupersetGroupWrapper from '../components/workout/SupersetGroupWrapper';
+import { useLastSessionData } from '../hooks/useLastSessionData';
+import { roundToNearest2_5 } from '../utils/calcUtils';
 import { v4 as uuidv4 } from 'uuid';
 
 const dayNames: DayType[] = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+
+// Composant wrapper pour passer les suggestions par exercice
+function ExerciseWithSuggestion({
+  exercise,
+  workouts,
+  onUpdateSet,
+  onUpdateRM,
+  onUpdateNotes,
+  onAddSet,
+  onDeleteSet,
+  onDelete,
+  onSetSupersetGroup,
+  onGenerateWarmup,
+  onApplySuggestion,
+}: {
+  exercise: Exercise;
+  workouts: ReturnType<typeof useWorkouts>['workouts'];
+  onUpdateSet: (setId: string, field: keyof Set, value: number | boolean) => void;
+  onUpdateRM: (rm: number) => void;
+  onUpdateNotes: (notes: string) => void;
+  onAddSet: () => void;
+  onDeleteSet: (setId: string) => void;
+  onDelete: () => void;
+  onSetSupersetGroup: (group: number | undefined) => void;
+  onGenerateWarmup: () => void;
+  onApplySuggestion: () => void;
+}) {
+  const lastSession = useLastSessionData(exercise.name, workouts);
+
+  return (
+    <ExerciseCard
+      exercise={exercise}
+      onUpdateSet={onUpdateSet}
+      onUpdateRM={onUpdateRM}
+      onUpdateNotes={onUpdateNotes}
+      onAddSet={onAddSet}
+      onDeleteSet={onDeleteSet}
+      onDelete={onDelete}
+      supersetGroup={exercise.supersetGroup}
+      onSetSupersetGroup={onSetSupersetGroup}
+      suggestion={lastSession?.suggestion}
+      onApplySuggestion={onApplySuggestion}
+      onGenerateWarmup={onGenerateWarmup}
+    />
+  );
+}
 
 export default function NewWorkout() {
   const navigate = useNavigate();
@@ -24,7 +75,7 @@ export default function NewWorkout() {
   const defaultDay = todayIndex === 0 ? 'dimanche' : dayNames[todayIndex - 1];
 
   // Crée un workout à partir des données d'un programme
-  const makeWorkoutFromProgram = (program: DayProgram, day: DayType) => ({
+  const makeWorkoutFromProgram = (program: DayProgram, day: DayType): Workout => ({
     id: uuidv4(),
     date: new Date().toISOString(),
     dayType: day,
@@ -60,7 +111,7 @@ export default function NewWorkout() {
 
   // Timer de repos
   const [restTimer, setRestTimer] = useState<number | null>(null);
-  const restDuration = 90; // Durée par défaut en secondes
+  const restDuration = 90;
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioRef = useRef<AudioContext | null>(null);
 
@@ -77,7 +128,6 @@ export default function NewWorkout() {
       gain.gain.value = 0.3;
       osc.start();
       osc.stop(ctx.currentTime + 0.3);
-      // Double beep
       setTimeout(() => {
         const osc2 = ctx.createOscillator();
         const gain2 = ctx.createGain();
@@ -111,10 +161,7 @@ export default function NewWorkout() {
     };
   }, [restTimer !== null && restTimer > 0, playBeep]);
 
-  const startRestTimer = () => {
-    setRestTimer(restDuration);
-  };
-
+  const startRestTimer = () => setRestTimer(restDuration);
   const stopRestTimer = () => {
     setRestTimer(null);
     if (timerRef.current) clearInterval(timerRef.current);
@@ -139,7 +186,7 @@ export default function NewWorkout() {
     }
   };
 
-  // Change uniquement le type de séance (garde le jour)
+  // Change uniquement le type de séance
   const handleProgramChange = (program: DayProgram) => {
     setSelectedProgram(program);
     setWorkout(prev => ({
@@ -165,43 +212,27 @@ export default function NewWorkout() {
       ...prev,
       exercises: prev.exercises.map((ex) =>
         ex.id === exerciseId
-          ? {
-              ...ex,
-              sets: ex.sets.map((s) =>
-                s.id === setId ? { ...s, [field]: value } : s
-              ),
-            }
+          ? { ...ex, sets: ex.sets.map((s) => s.id === setId ? { ...s, [field]: value } : s) }
           : ex
       ),
     }));
-
-    // Lance le timer quand on complète une série
-    if (field === 'completed' && value === true) {
-      startRestTimer();
-    }
+    if (field === 'completed' && value === true) startRestTimer();
   };
 
-  // Met à jour le RM d'un exercice
   const updateExerciseRM = (exerciseId: string, rm: number) => {
     setWorkout((prev) => ({
       ...prev,
-      exercises: prev.exercises.map((ex) =>
-        ex.id === exerciseId ? { ...ex, rm } : ex
-      ),
+      exercises: prev.exercises.map((ex) => ex.id === exerciseId ? { ...ex, rm } : ex),
     }));
   };
 
-  // Met à jour les notes d'un exercice
   const updateExerciseNotes = (exerciseId: string, notes: string) => {
     setWorkout((prev) => ({
       ...prev,
-      exercises: prev.exercises.map((ex) =>
-        ex.id === exerciseId ? { ...ex, notes } : ex
-      ),
+      exercises: prev.exercises.map((ex) => ex.id === exerciseId ? { ...ex, notes } : ex),
     }));
   };
 
-  // Supprime un exercice
   const deleteExercise = (exerciseId: string) => {
     setWorkout((prev) => ({
       ...prev,
@@ -209,69 +240,116 @@ export default function NewWorkout() {
     }));
   };
 
-  // Ajoute une série à un exercice
   const addSet = (exerciseId: string) => {
     setWorkout((prev) => ({
       ...prev,
       exercises: prev.exercises.map((ex) =>
         ex.id === exerciseId
-          ? {
-              ...ex,
-              sets: [
-                ...ex.sets,
-                {
-                  id: uuidv4(),
-                  setNumber: ex.sets.length + 1,
-                  reps: 0,
-                  weight: 0,
-                  completed: false,
-                },
-              ],
-            }
+          ? { ...ex, sets: [...ex.sets, { id: uuidv4(), setNumber: ex.sets.length + 1, reps: 0, weight: 0, completed: false }] }
           : ex
       ),
     }));
   };
 
-  // Supprime une série d'un exercice
   const deleteSet = (exerciseId: string, setId: string) => {
     setWorkout((prev) => ({
       ...prev,
       exercises: prev.exercises.map((ex) =>
         ex.id === exerciseId
-          ? {
-              ...ex,
-              sets: ex.sets
-                .filter((s) => s.id !== setId)
-                .map((s, i) => ({ ...s, setNumber: i + 1 })), // Renuméroter
-            }
+          ? { ...ex, sets: ex.sets.filter((s) => s.id !== setId).map((s, i) => ({ ...s, setNumber: i + 1 })) }
           : ex
       ),
     }));
   };
 
-  // Ajoute un nouvel exercice
+  // Superset : assigner un groupe
+  const updateExerciseSupersetGroup = (exerciseId: string, group: number | undefined) => {
+    setWorkout((prev) => ({
+      ...prev,
+      exercises: prev.exercises.map((ex) =>
+        ex.id === exerciseId ? { ...ex, supersetGroup: group } : ex
+      ),
+    }));
+  };
+
+  // Échauffement : générer 3 séries d'échauffement
+  const generateWarmupSets = (exerciseId: string) => {
+    setWorkout((prev) => ({
+      ...prev,
+      exercises: prev.exercises.map((ex) => {
+        if (ex.id !== exerciseId) return ex;
+
+        const workingWeight = ex.rm || Math.max(...ex.sets.map(s => s.weight), 0);
+        if (workingWeight <= 0) return ex;
+
+        const warmupSets: Set[] = [
+          { id: uuidv4(), setNumber: 1, reps: 8, weight: roundToNearest2_5(workingWeight * 0.5), completed: false },
+          { id: uuidv4(), setNumber: 2, reps: 5, weight: roundToNearest2_5(workingWeight * 0.7), completed: false },
+          { id: uuidv4(), setNumber: 3, reps: 3, weight: roundToNearest2_5(workingWeight * 0.85), completed: false },
+        ];
+
+        // Renuméroter les sets existants
+        const existingSets = ex.sets.map((s, i) => ({ ...s, setNumber: i + 4 }));
+
+        return { ...ex, sets: [...warmupSets, ...existingSets] };
+      }),
+    }));
+  };
+
+  // Appliquer la suggestion de progression
+  const applySuggestion = (exerciseId: string) => {
+    const exercise = workout.exercises.find(ex => ex.id === exerciseId);
+    if (!exercise) return;
+
+    // Trouver la dernière séance pour cet exercice
+    const sorted = [...workouts]
+      .filter(w => w.completed)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    const lastWorkout = sorted.find(w => w.exercises.some(e => e.name === exercise.name));
+    if (!lastWorkout) return;
+
+    const lastExercise = lastWorkout.exercises.find(e => e.name === exercise.name);
+    if (!lastExercise) return;
+
+    const completedSets = lastExercise.sets.filter(s => s.completed);
+    const allHaveRir = completedSets.every(s => s.rir !== undefined && s.rir !== null);
+    const minRir = allHaveRir ? Math.min(...completedSets.map(s => s.rir!)) : 0;
+
+    setWorkout((prev) => ({
+      ...prev,
+      exercises: prev.exercises.map((ex) => {
+        if (ex.id !== exerciseId) return ex;
+        return {
+          ...ex,
+          sets: ex.sets.map((s, i) => {
+            const lastSet = lastExercise.sets[i];
+            if (!lastSet) return s;
+            if (s.weight > 0 || s.reps > 0) return s; // Ne pas écraser les valeurs existantes
+
+            if (minRir >= 2) {
+              return { ...s, weight: lastSet.weight + 2.5, reps: lastSet.reps };
+            } else {
+              return { ...s, weight: lastSet.weight, reps: lastSet.reps + 1 };
+            }
+          }),
+        };
+      }),
+    }));
+  };
+
   const [showAddExercise, setShowAddExercise] = useState(false);
   const [showGeneralNotes, setShowGeneralNotes] = useState(false);
 
-  // Sauvegarde la séance
   const handleSave = async (completed: boolean) => {
     if (isEditMode && workoutId) {
-      await updateWorkout(workoutId, {
-        ...workout,
-        completed,
-      });
+      await updateWorkout(workoutId, { ...workout, completed });
     } else {
-      await addWorkout({
-        ...workout,
-        date: new Date().toISOString(),
-        completed,
-      });
+      await addWorkout({ ...workout, date: new Date().toISOString(), completed });
     }
     navigate('/');
   };
 
-  // Réinitialise la séance
   const handleReset = () => {
     if (confirm('Réinitialiser la séance ? Toutes les modifications seront perdues.')) {
       if (selectedProgram) {
@@ -282,36 +360,47 @@ export default function NewWorkout() {
     }
   };
 
-  // Sauvegarde les exercices dans le programme
   const handleSaveToProgram = () => {
     if (workout.exercises.length === 0) return;
     const exerciseNames = workout.exercises.map(ex => ex.name);
-
     if (selectedProgram) {
-      updateProgram(selectedProgram.id, {
-        exercises: exerciseNames,
-      });
+      updateProgram(selectedProgram.id, { exercises: exerciseNames });
       alert('Programme mis à jour !');
     } else {
-      addProgram({
-        dayType: selectedDay,
-        sessionName: workout.sessionName,
-        focus: '',
-        exercises: exerciseNames,
-        isCustom: true,
-      });
+      addProgram({ dayType: selectedDay, sessionName: workout.sessionName, focus: '', exercises: exerciseNames, isCustom: true });
       alert('Programme créé !');
     }
   };
+
+  // Grouper les exercices pour le rendu (supersets vs standalone)
+  const exerciseGroups = useMemo(() => {
+    const groups: { type: 'standalone' | 'superset'; groupNumber?: number; exercises: Exercise[] }[] = [];
+    const processed = new Set<string>();
+
+    workout.exercises.forEach((ex) => {
+      if (processed.has(ex.id)) return;
+
+      if (ex.supersetGroup) {
+        // Trouver tous les exercices du même superset
+        const supersetExercises = workout.exercises.filter(
+          e => e.supersetGroup === ex.supersetGroup && !processed.has(e.id)
+        );
+        supersetExercises.forEach(e => processed.add(e.id));
+        groups.push({ type: 'superset', groupNumber: ex.supersetGroup, exercises: supersetExercises });
+      } else {
+        processed.add(ex.id);
+        groups.push({ type: 'standalone', exercises: [ex] });
+      }
+    });
+
+    return groups;
+  }, [workout.exercises]);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-100">{isEditMode ? 'Modifier la séance' : 'Mes séances'}</h1>
-        <button
-          onClick={handleReset}
-          className="text-sm text-gray-400 hover:text-gray-200"
-        >
+        <button onClick={handleReset} className="text-sm text-gray-400 hover:text-gray-200">
           Réinitialiser
         </button>
       </div>
@@ -347,9 +436,7 @@ export default function NewWorkout() {
               className="text-sm bg-gray-700 border border-gray-600 rounded-lg px-2 py-1 text-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               {programs.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.sessionName}
-                </option>
+                <option key={p.id} value={p.id}>{p.sessionName}</option>
               ))}
             </select>
           </div>
@@ -373,20 +460,50 @@ export default function NewWorkout() {
         </Card>
       )}
 
-      {/* Exercices */}
+      {/* Exercices (avec groupement superset) */}
       <div className="space-y-4">
-        {workout.exercises.map((exercise) => (
-          <ExerciseCard
-            key={exercise.id}
-            exercise={exercise}
-            onUpdateSet={(setId, field, value) => updateSet(exercise.id, setId, field, value)}
-            onUpdateRM={(rm) => updateExerciseRM(exercise.id, rm)}
-            onUpdateNotes={(notes) => updateExerciseNotes(exercise.id, notes)}
-            onAddSet={() => addSet(exercise.id)}
-            onDeleteSet={(setId) => deleteSet(exercise.id, setId)}
-            onDelete={() => deleteExercise(exercise.id)}
-          />
-        ))}
+        {exerciseGroups.map((group, gi) => {
+          if (group.type === 'superset' && group.groupNumber) {
+            return (
+              <SupersetGroupWrapper key={`ss-${group.groupNumber}-${gi}`} groupNumber={group.groupNumber}>
+                {group.exercises.map((exercise) => (
+                  <ExerciseWithSuggestion
+                    key={exercise.id}
+                    exercise={exercise}
+                    workouts={workouts}
+                    onUpdateSet={(setId, field, value) => updateSet(exercise.id, setId, field, value)}
+                    onUpdateRM={(rm) => updateExerciseRM(exercise.id, rm)}
+                    onUpdateNotes={(notes) => updateExerciseNotes(exercise.id, notes)}
+                    onAddSet={() => addSet(exercise.id)}
+                    onDeleteSet={(setId) => deleteSet(exercise.id, setId)}
+                    onDelete={() => deleteExercise(exercise.id)}
+                    onSetSupersetGroup={(g) => updateExerciseSupersetGroup(exercise.id, g)}
+                    onGenerateWarmup={() => generateWarmupSets(exercise.id)}
+                    onApplySuggestion={() => applySuggestion(exercise.id)}
+                  />
+                ))}
+              </SupersetGroupWrapper>
+            );
+          }
+
+          const exercise = group.exercises[0];
+          return (
+            <ExerciseWithSuggestion
+              key={exercise.id}
+              exercise={exercise}
+              workouts={workouts}
+              onUpdateSet={(setId, field, value) => updateSet(exercise.id, setId, field, value)}
+              onUpdateRM={(rm) => updateExerciseRM(exercise.id, rm)}
+              onUpdateNotes={(notes) => updateExerciseNotes(exercise.id, notes)}
+              onAddSet={() => addSet(exercise.id)}
+              onDeleteSet={(setId) => deleteSet(exercise.id, setId)}
+              onDelete={() => deleteExercise(exercise.id)}
+              onSetSupersetGroup={(g) => updateExerciseSupersetGroup(exercise.id, g)}
+              onGenerateWarmup={() => generateWarmupSets(exercise.id)}
+              onApplySuggestion={() => applySuggestion(exercise.id)}
+            />
+          );
+        })}
 
         {/* Ajouter un exercice */}
         {showAddExercise ? (
@@ -507,160 +624,5 @@ export default function NewWorkout() {
         </div>
       )}
     </div>
-  );
-}
-
-// Composant pour afficher un exercice
-interface ExerciseCardProps {
-  exercise: Exercise;
-  onUpdateSet: (setId: string, field: keyof Set, value: number | boolean) => void;
-  onUpdateRM: (rm: number) => void;
-  onUpdateNotes: (notes: string) => void;
-  onAddSet: () => void;
-  onDeleteSet: (setId: string) => void;
-  onDelete: () => void;
-}
-
-function ExerciseCard({ exercise, onUpdateSet, onUpdateRM, onUpdateNotes, onAddSet, onDeleteSet, onDelete }: ExerciseCardProps) {
-  const [showNotes, setShowNotes] = useState(false);
-
-  return (
-    <Card>
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <h3 className="font-semibold text-gray-100">{exercise.name}</h3>
-          <button
-            onClick={onDelete}
-            className="text-gray-400 hover:text-red-500 transition-colors p-1"
-            title="Supprimer l'exercice"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-            </svg>
-          </button>
-        </div>
-        {/* RM (Rep Max) */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-400 uppercase">RM</span>
-          <input
-            type="number"
-            value={exercise.rm || ''}
-            onChange={(e) => onUpdateRM(parseFloat(e.target.value) || 0)}
-            className="input w-20 text-center text-sm py-1"
-            placeholder="kg"
-          />
-        </div>
-      </div>
-
-      {/* En-tête des colonnes */}
-      <div className="grid grid-cols-7 gap-1.5 text-xs text-gray-400 uppercase tracking-wide mb-2 px-1">
-        <div>Série</div>
-        <div>Kg</div>
-        <div>%RM</div>
-        <div>Reps</div>
-        <div>RIR</div>
-        <div>OK</div>
-        <div></div>
-      </div>
-
-      {/* Séries */}
-      <div className="space-y-2">
-        {exercise.sets.map((set) => {
-          const percentRM = exercise.rm && set.weight
-            ? Math.round((set.weight / exercise.rm) * 100)
-            : null;
-
-          const getPercentColor = (percent: number) => {
-            if (percent >= 90) return 'text-red-600 bg-red-50';
-            if (percent >= 80) return 'text-orange-600 bg-orange-50';
-            if (percent >= 70) return 'text-yellow-600 bg-yellow-50';
-            return 'text-green-600 bg-green-50';
-          };
-
-          return (
-            <div key={set.id} className="grid grid-cols-7 gap-1.5 items-center">
-              <div className="text-sm font-medium text-gray-300">{set.setNumber}</div>
-              <input
-                type="number"
-                value={set.weight || ''}
-                onChange={(e) => onUpdateSet(set.id, 'weight', parseFloat(e.target.value) || 0)}
-                className="input text-center text-sm py-1"
-                placeholder="0"
-              />
-              <div className={`text-center text-sm py-1 rounded-lg font-medium ${
-                percentRM ? getPercentColor(percentRM) : 'text-gray-400'
-              }`}>
-                {percentRM ? `${percentRM}%` : '-'}
-              </div>
-              <input
-                type="number"
-                value={set.reps || ''}
-                onChange={(e) => onUpdateSet(set.id, 'reps', parseInt(e.target.value) || 0)}
-                className="input text-center text-sm py-1"
-                placeholder="0"
-              />
-              <input
-                type="number"
-                value={set.rir ?? ''}
-                onChange={(e) => onUpdateSet(set.id, 'rir', parseInt(e.target.value) || 0)}
-                className="input text-center text-sm py-1"
-                placeholder="-"
-                min="0"
-                max="10"
-              />
-              <button
-                onClick={() => onUpdateSet(set.id, 'completed', !set.completed)}
-                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                  set.completed
-                    ? 'bg-green-500 text-white'
-                    : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-                }`}
-              >
-                ✓
-              </button>
-              {/* Supprimer la série */}
-              {exercise.sets.length > 1 && (
-                <button
-                  onClick={() => onDeleteSet(set.id)}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 hover:text-red-400 hover:bg-red-900/20 transition-colors"
-                  title="Supprimer la série"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Actions */}
-      <div className="mt-3 flex items-center gap-4">
-        <button
-          onClick={onAddSet}
-          className="text-sm text-primary-600 hover:text-primary-400 font-medium"
-        >
-          + Ajouter une série
-        </button>
-        <button
-          onClick={() => setShowNotes(!showNotes)}
-          className="text-sm text-gray-400 hover:text-gray-200 font-medium"
-        >
-          {showNotes ? '− Masquer commentaire' : '+ Ajouter commentaire'}
-        </button>
-      </div>
-
-      {/* Zone de commentaire */}
-      {(showNotes || exercise.notes) && (
-        <div className="mt-3">
-          <textarea
-            value={exercise.notes || ''}
-            onChange={(e) => onUpdateNotes(e.target.value)}
-            className="input text-sm resize-none"
-            rows={2}
-            placeholder="Ressenti, remarques, ajustements..."
-          />
-        </div>
-      )}
-    </Card>
   );
 }

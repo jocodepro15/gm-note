@@ -75,6 +75,7 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
               rm: ex.rm,
               notes: ex.notes,
               exerciseOrder: ex.exercise_order,
+              supersetGroup: ex.superset_group || undefined,
             };
           })
         );
@@ -134,6 +135,7 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
         rm: exercise.rm || null,
         notes: exercise.notes || null,
         exercise_order: exercise.exerciseOrder,
+        superset_group: exercise.supersetGroup || null,
       });
 
       if (exError) {
@@ -200,6 +202,7 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
           rm: exercise.rm || null,
           notes: exercise.notes || null,
           exercise_order: exercise.exerciseOrder,
+          superset_group: exercise.supersetGroup || null,
         });
 
         if (exercise.sets.length > 0) {

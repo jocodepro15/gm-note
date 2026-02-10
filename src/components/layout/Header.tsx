@@ -7,6 +7,7 @@ const navItems = [
   { path: '/programmes', label: 'Programmes' },
   { path: '/history', label: 'Historique' },
   { path: '/progression', label: 'Progression' },
+  { path: '/suivi', label: 'Suivi' },
   { path: '/timer', label: 'Chrono' },
   { path: '/calc', label: 'Calcul' },
   { path: '/infos', label: 'Infos' },
