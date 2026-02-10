@@ -95,19 +95,49 @@ export default function NewWorkout() {
     completed: false,
   });
 
-  const [selectedDay, setSelectedDay] = useState<DayType>(existingWorkout?.dayType || defaultDay);
+  // Clé localStorage pour le brouillon
+  const DRAFT_KEY = 'workout-draft';
+  const DRAFT_DAY_KEY = 'workout-draft-day';
+
+  const [selectedDay, setSelectedDay] = useState<DayType>(() => {
+    if (existingWorkout) return existingWorkout.dayType;
+    // Restaurer le jour du brouillon
+    const savedDay = localStorage.getItem(DRAFT_DAY_KEY);
+    if (!isEditMode && savedDay && dayNames.includes(savedDay as DayType)) {
+      return savedDay as DayType;
+    }
+    return defaultDay;
+  });
   const [selectedProgram, setSelectedProgram] = useState<DayProgram | null>(() => {
     if (isEditMode) return null;
-    return programs.find(p => p.dayType === defaultDay) || programs[0] || null;
+    return programs.find(p => p.dayType === selectedDay) || programs[0] || null;
   });
-  const [workout, setWorkout] = useState(() => {
+  const [workout, setWorkout] = useState<Workout>(() => {
     if (existingWorkout) return existingWorkout;
-    const program = programs.find(p => p.dayType === defaultDay) || programs[0];
-    if (program) {
-      return makeWorkoutFromProgram(program, defaultDay);
+    // Restaurer le brouillon depuis localStorage
+    if (!isEditMode) {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved) as Workout;
+          if (parsed && parsed.exercises) return parsed;
+        } catch { /* brouillon invalide, on l'ignore */ }
+      }
     }
-    return createWorkoutFromTemplate(defaultDay);
+    const program = programs.find(p => p.dayType === selectedDay) || programs[0];
+    if (program) {
+      return makeWorkoutFromProgram(program, selectedDay);
+    }
+    return createWorkoutFromTemplate(selectedDay);
   });
+
+  // Sauvegarder le brouillon à chaque modification
+  useEffect(() => {
+    if (!isEditMode) {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(workout));
+      localStorage.setItem(DRAFT_DAY_KEY, selectedDay);
+    }
+  }, [workout, selectedDay, isEditMode]);
 
   // Timer de repos
   const [restTimer, setRestTimer] = useState<number | null>(null);
@@ -347,11 +377,16 @@ export default function NewWorkout() {
     } else {
       await addWorkout({ ...workout, date: new Date().toISOString(), completed });
     }
+    // Supprimer le brouillon après sauvegarde
+    localStorage.removeItem(DRAFT_KEY);
+    localStorage.removeItem(DRAFT_DAY_KEY);
     navigate('/');
   };
 
   const handleReset = () => {
     if (confirm('Réinitialiser la séance ? Toutes les modifications seront perdues.')) {
+      localStorage.removeItem(DRAFT_KEY);
+      localStorage.removeItem(DRAFT_DAY_KEY);
       if (selectedProgram) {
         setWorkout(makeWorkoutFromProgram(selectedProgram, selectedDay));
       } else {
