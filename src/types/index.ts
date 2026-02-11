@@ -10,6 +10,7 @@ export interface Set {
   restTime?: number; // en secondes
   rir?: number; // Reps In Reserve (répétitions en réserve)
   completed: boolean;
+  pyramidId?: string; // identifiant du groupe pyramide
 }
 
 export interface Exercise {

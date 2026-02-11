@@ -27,6 +27,9 @@ function ExerciseWithSuggestion({
   onDelete,
   onSetSupersetGroup,
   onGenerateWarmup,
+  onGeneratePyramid,
+  onDeletePyramidGroup,
+  onUpdatePyramidGroup,
   onApplySuggestion,
   onMoveUp,
   onMoveDown,
@@ -43,6 +46,9 @@ function ExerciseWithSuggestion({
   onDelete: () => void;
   onSetSupersetGroup: (group: number | undefined) => void;
   onGenerateWarmup: () => void;
+  onGeneratePyramid: (repsPerSet: number[], rounds: number, restBetweenSets: number, restBetweenRounds: number) => void;
+  onDeletePyramidGroup: (pyramidId: string) => void;
+  onUpdatePyramidGroup: (pyramidId: string, repsPerSet: number[], restBetweenSets: number, restBetweenRounds: number) => void;
   onApplySuggestion: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
@@ -65,6 +71,9 @@ function ExerciseWithSuggestion({
       suggestion={lastSession?.suggestion}
       onApplySuggestion={onApplySuggestion}
       onGenerateWarmup={onGenerateWarmup}
+      onGeneratePyramid={onGeneratePyramid}
+      onDeletePyramidGroup={onDeletePyramidGroup}
+      onUpdatePyramidGroup={onUpdatePyramidGroup}
       onMoveUp={onMoveUp}
       onMoveDown={onMoveDown}
       isFirst={isFirst}
@@ -209,7 +218,7 @@ export default function NewWorkout() {
     };
   }, [restTimer !== null && restTimer > 0, playBeep]);
 
-  const startRestTimer = () => setRestTimer(restDuration);
+  const startRestTimer = (customDuration?: number) => setRestTimer(customDuration ?? restDuration);
   const stopRestTimer = () => {
     setRestTimer(null);
     if (timerRef.current) clearInterval(timerRef.current);
@@ -264,7 +273,12 @@ export default function NewWorkout() {
           : ex
       ),
     }));
-    if (field === 'completed' && value === true) startRestTimer();
+    if (field === 'completed' && value === true) {
+      // Utiliser le restTime de la série si défini (ex: pyramide)
+      const exercise = workout.exercises.find(ex => ex.id === exerciseId);
+      const set = exercise?.sets.find(s => s.id === setId);
+      startRestTimer(set?.restTime);
+    }
   };
 
   const updateExerciseRM = (exerciseId: string, rm: number) => {
@@ -333,6 +347,79 @@ export default function NewWorkout() {
       exercises: prev.exercises.map((ex) =>
         ex.id === exerciseId ? { ...ex, supersetGroup: group } : ex
       ),
+    }));
+  };
+
+  // Supprimer un groupe pyramide entier
+  const deletePyramidGroup = (exerciseId: string, pyramidId: string) => {
+    setWorkout((prev) => ({
+      ...prev,
+      exercises: prev.exercises.map((ex) =>
+        ex.id === exerciseId
+          ? { ...ex, sets: ex.sets.filter((s) => s.pyramidId !== pyramidId).map((s, i) => ({ ...s, setNumber: i + 1 })) }
+          : ex
+      ),
+    }));
+  };
+
+  // Modifier un groupe pyramide existant
+  const updatePyramidGroup = (exerciseId: string, pyramidId: string, repsPerSet: number[], restBetweenSets: number, restBetweenRounds: number) => {
+    setWorkout((prev) => ({
+      ...prev,
+      exercises: prev.exercises.map((ex) => {
+        if (ex.id !== exerciseId) return ex;
+        const otherSets = ex.sets.filter(s => s.pyramidId !== pyramidId);
+        const firstIndex = ex.sets.findIndex(s => s.pyramidId === pyramidId);
+        const newPyramidSets: Set[] = repsPerSet.map((reps, j) => ({
+          id: uuidv4(),
+          setNumber: 0,
+          reps,
+          weight: 0,
+          completed: false,
+          pyramidId,
+          restTime: (j === repsPerSet.length - 1 ? restBetweenRounds : restBetweenSets) || undefined,
+        }));
+        const allSets = [
+          ...otherSets.slice(0, firstIndex),
+          ...newPyramidSets,
+          ...otherSets.slice(firstIndex),
+        ].map((s, i) => ({ ...s, setNumber: i + 1 }));
+        return { ...ex, sets: allSets };
+      }),
+    }));
+  };
+
+  // Pyramide : générer les séries avec reps pré-calculés et groupées par tour
+  const generatePyramidSets = (exerciseId: string, repsPerSet: number[], rounds: number, restBetweenSets: number, restBetweenRounds: number) => {
+    setWorkout((prev) => ({
+      ...prev,
+      exercises: prev.exercises.map((ex) => {
+        if (ex.id !== exerciseId) return ex;
+        const newSets: Set[] = [];
+        for (let r = 0; r < rounds; r++) {
+          const pyramidId = uuidv4();
+          for (let j = 0; j < repsPerSet.length; j++) {
+            const isLastSetOfRound = j === repsPerSet.length - 1;
+            const isLastRound = r === rounds - 1;
+            // Dernière série du tour : repos entre tours (sauf dernier tour)
+            // Autres séries : repos entre séries
+            const restTime = isLastSetOfRound && !isLastRound
+              ? restBetweenRounds
+              : restBetweenSets;
+            newSets.push({
+              id: uuidv4(),
+              setNumber: 0,
+              reps: repsPerSet[j],
+              weight: 0,
+              completed: false,
+              pyramidId,
+              restTime: restTime || undefined,
+            });
+          }
+        }
+        const allSets = [...ex.sets, ...newSets].map((s, i) => ({ ...s, setNumber: i + 1 }));
+        return { ...ex, sets: allSets };
+      }),
     }));
   };
 
@@ -548,6 +635,9 @@ export default function NewWorkout() {
                     onDelete={() => deleteExercise(exercise.id)}
                     onSetSupersetGroup={(g) => updateExerciseSupersetGroup(exercise.id, g)}
                     onGenerateWarmup={() => generateWarmupSets(exercise.id)}
+                    onGeneratePyramid={(repsPerSet, rounds, restSets, restRounds) => generatePyramidSets(exercise.id, repsPerSet, rounds, restSets, restRounds)}
+                    onDeletePyramidGroup={(pyramidId) => deletePyramidGroup(exercise.id, pyramidId)}
+                    onUpdatePyramidGroup={(pyramidId, repsPerSet, restSets, restRounds) => updatePyramidGroup(exercise.id, pyramidId, repsPerSet, restSets, restRounds)}
                     onApplySuggestion={() => applySuggestion(exercise.id)}
                     onMoveUp={() => moveExercise(exercise.id, 'up')}
                     onMoveDown={() => moveExercise(exercise.id, 'down')}
@@ -573,6 +663,9 @@ export default function NewWorkout() {
               onDelete={() => deleteExercise(exercise.id)}
               onSetSupersetGroup={(g) => updateExerciseSupersetGroup(exercise.id, g)}
               onGenerateWarmup={() => generateWarmupSets(exercise.id)}
+              onGeneratePyramid={(repsPerSet, rounds, restSets, restRounds) => generatePyramidSets(exercise.id, repsPerSet, rounds, restSets, restRounds)}
+              onDeletePyramidGroup={(pyramidId) => deletePyramidGroup(exercise.id, pyramidId)}
+              onUpdatePyramidGroup={(pyramidId, repsPerSet, restSets, restRounds) => updatePyramidGroup(exercise.id, pyramidId, repsPerSet, restSets, restRounds)}
               onApplySuggestion={() => applySuggestion(exercise.id)}
               onMoveUp={() => moveExercise(exercise.id, 'up')}
               onMoveDown={() => moveExercise(exercise.id, 'down')}
@@ -690,7 +783,7 @@ export default function NewWorkout() {
             </div>
             <div className="flex gap-1">
               <button
-                onClick={startRestTimer}
+                onClick={() => startRestTimer()}
                 className="px-2 py-1 text-xs bg-primary-600 hover:bg-primary-500 text-white rounded"
               >
                 Relancer
