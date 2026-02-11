@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo, useState } from 'react';
+import { useEffect, useRef, useMemo, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 
 interface ScrollPickerProps {
@@ -11,12 +11,12 @@ interface ScrollPickerProps {
   onClose: () => void;
 }
 
-const ITEM_HEIGHT = 44;
+const ITEM_HEIGHT = 48;
 const VISIBLE_ITEMS = 5;
+const CENTER = Math.floor(VISIBLE_ITEMS / 2);
 
 export default function ScrollPicker({ value, min, max, step, label, onConfirm, onClose }: ScrollPickerProps) {
   const listRef = useRef<HTMLDivElement>(null);
-  const [selectedValue, setSelectedValue] = useState(value);
 
   // Générer la liste des valeurs
   const values = useMemo(() => {
@@ -27,24 +27,31 @@ export default function ScrollPicker({ value, min, max, step, label, onConfirm, 
     return items;
   }, [min, max, step]);
 
+  // Trouver l'index initial
+  const initialIndex = useMemo(() => {
+    const idx = values.findIndex(v => v === value);
+    return idx >= 0 ? idx : 0;
+  }, [value, values]);
+
+  const [selectedIndex, setSelectedIndex] = useState(initialIndex);
+
   // Scroller à la valeur initiale
   useEffect(() => {
     if (listRef.current) {
-      const index = values.findIndex(v => v === value) || 0;
-      listRef.current.scrollTop = index * ITEM_HEIGHT;
+      listRef.current.scrollTop = initialIndex * ITEM_HEIGHT;
     }
-  }, [value, values]);
+  }, [initialIndex]);
 
-  // Détecter la valeur sélectionnée au scroll
-  const handleScroll = () => {
+  // Détecter l'index sélectionné au scroll
+  const handleScroll = useCallback(() => {
     if (!listRef.current) return;
     const scrollTop = listRef.current.scrollTop;
     const index = Math.round(scrollTop / ITEM_HEIGHT);
     const clamped = Math.max(0, Math.min(index, values.length - 1));
-    setSelectedValue(values[clamped]);
-  };
+    setSelectedIndex(clamped);
+  }, [values.length]);
 
-  // Cliquer sur un item pour le sélectionner
+  // Cliquer sur un item
   const scrollToIndex = (index: number) => {
     if (listRef.current) {
       listRef.current.scrollTo({ top: index * ITEM_HEIGHT, behavior: 'smooth' });
@@ -52,7 +59,8 @@ export default function ScrollPicker({ value, min, max, step, label, onConfirm, 
   };
 
   const pickerHeight = VISIBLE_ITEMS * ITEM_HEIGHT;
-  const padding = Math.floor(VISIBLE_ITEMS / 2) * ITEM_HEIGHT;
+  const paddingTop = CENTER * ITEM_HEIGHT;
+  const paddingBottom = CENTER * ITEM_HEIGHT;
 
   return createPortal(
     <div className="fixed inset-0" style={{ zIndex: 9999 }}>
@@ -75,7 +83,7 @@ export default function ScrollPicker({ value, min, max, step, label, onConfirm, 
           </button>
           <span className="text-sm font-semibold text-gray-200">{label}</span>
           <button
-            onClick={() => onConfirm(selectedValue)}
+            onClick={() => onConfirm(values[selectedIndex])}
             className="text-sm font-semibold"
             style={{ color: '#10b981' }}
           >
@@ -85,11 +93,11 @@ export default function ScrollPicker({ value, min, max, step, label, onConfirm, 
 
         {/* Picker */}
         <div className="relative" style={{ height: pickerHeight }}>
-          {/* Indicateur de sélection */}
+          {/* Indicateur de sélection au centre */}
           <div
             className="absolute left-4 right-4 rounded-xl pointer-events-none"
             style={{
-              top: padding,
+              top: paddingTop,
               height: ITEM_HEIGHT,
               background: 'rgba(16, 185, 129, 0.1)',
               border: '1px solid rgba(16, 185, 129, 0.3)',
@@ -100,27 +108,29 @@ export default function ScrollPicker({ value, min, max, step, label, onConfirm, 
           {/* Liste scrollable */}
           <div
             ref={listRef}
-            className="h-full overflow-y-auto scrollbar-hide"
+            className="h-full overflow-y-scroll scrollbar-hide"
             onScroll={handleScroll}
             style={{
               scrollSnapType: 'y mandatory',
+              WebkitOverflowScrolling: 'touch',
             }}
           >
-            {/* Padding haut */}
-            <div style={{ height: padding }} />
+            {/* Espace pour permettre de scroller le premier item au centre */}
+            <div style={{ height: paddingTop }} />
 
             {values.map((v, i) => {
-              const isSelected = v === selectedValue;
+              const isSelected = i === selectedIndex;
               return (
                 <div
                   key={v}
-                  className="flex items-center justify-center cursor-pointer transition-all duration-150"
+                  className="flex items-center justify-center cursor-pointer"
                   style={{
                     height: ITEM_HEIGHT,
-                    scrollSnapAlign: 'start',
+                    scrollSnapAlign: 'center',
                     fontSize: isSelected ? '1.5rem' : '1rem',
                     fontWeight: isSelected ? 600 : 400,
                     color: isSelected ? '#10b981' : 'rgba(255,255,255,0.3)',
+                    transition: 'color 0.1s, font-size 0.1s',
                   }}
                   onClick={() => scrollToIndex(i)}
                 >
@@ -129,8 +139,8 @@ export default function ScrollPicker({ value, min, max, step, label, onConfirm, 
               );
             })}
 
-            {/* Padding bas */}
-            <div style={{ height: padding }} />
+            {/* Espace pour permettre de scroller le dernier item au centre */}
+            <div style={{ height: paddingBottom }} />
           </div>
         </div>
       </div>
