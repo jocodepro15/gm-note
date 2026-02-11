@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useWorkouts } from '../context/WorkoutContext';
 import { usePrograms } from '../context/ProgramContext';
 import { DayType, DayProgram } from '../types';
@@ -76,6 +76,7 @@ function ExerciseWithSuggestion({
 export default function NewWorkout() {
   const navigate = useNavigate();
   const { workoutId } = useParams<{ workoutId: string }>();
+  const [searchParams] = useSearchParams();
   const { workouts, addWorkout, updateWorkout, createWorkoutFromTemplate } = useWorkouts();
   const { programs, updateProgram, addProgram } = usePrograms();
   const isEditMode = !!workoutId;
@@ -113,6 +114,11 @@ export default function NewWorkout() {
 
   const [selectedDay, setSelectedDay] = useState<DayType>(() => {
     if (existingWorkout) return existingWorkout.dayType;
+    // Priorité au query param ?day=
+    const dayParam = searchParams.get('day');
+    if (dayParam && dayNames.includes(dayParam as DayType)) {
+      return dayParam as DayType;
+    }
     // Restaurer le jour du brouillon
     const savedDay = localStorage.getItem(DRAFT_DAY_KEY);
     if (!isEditMode && savedDay && dayNames.includes(savedDay as DayType)) {
@@ -605,6 +611,16 @@ export default function NewWorkout() {
             className="w-full py-3 border-2 border-dashed border-gray-600 rounded-xl text-gray-400 hover:border-primary-400 hover:text-primary-600 transition-colors"
           >
             + Ajouter un exercice
+          </button>
+        )}
+
+        {/* Bouton vers Programmes si aucun exercice */}
+        {workout.exercises.length === 0 && (
+          <button
+            onClick={() => navigate('/programmes')}
+            className="w-full py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-xl font-medium transition-colors"
+          >
+            Crée ton programme
           </button>
         )}
 

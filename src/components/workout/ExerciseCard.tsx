@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Exercise, Set } from '../../types';
 import { SuggestionData } from '../../hooks/useLastSessionData';
 import Card from '../ui/Card';
+import ScrollPicker from '../ui/ScrollPicker';
 
 interface ExerciseCardProps {
   exercise: Exercise;
@@ -52,6 +53,8 @@ export default function ExerciseCard({
 }: ExerciseCardProps) {
   const [showNotes, setShowNotes] = useState(false);
   const [showSupersetMenu, setShowSupersetMenu] = useState(false);
+  const [activePicker, setActivePicker] = useState<{ setId: string; field: 'weight' | 'reps' | 'rir'; value: number } | null>(null);
+  const [rmPickerOpen, setRmPickerOpen] = useState(false);
 
   const borderClass = supersetGroup ? `border-l-4 ${SUPERSET_COLORS[supersetGroup] || 'border-l-purple-500'}` : '';
 
@@ -142,18 +145,17 @@ export default function ExerciseCard({
             </button>
           )}
           <span className="text-xs text-gray-400 uppercase">RM</span>
-          <input
-            type="number"
-            value={exercise.rm || ''}
-            onChange={(e) => onUpdateRM(parseFloat(e.target.value) || 0)}
-            className="input w-20 text-center text-sm py-1"
-            placeholder="kg"
-          />
+          <div
+            onClick={() => setRmPickerOpen(true)}
+            className="input w-20 text-center text-sm py-1 cursor-pointer select-none"
+          >
+            {exercise.rm || 'kg'}
+          </div>
         </div>
       </div>
 
       {/* En-tête des colonnes */}
-      <div className="grid grid-cols-7 gap-1.5 text-xs text-gray-400 uppercase tracking-wide mb-2 px-1">
+      <div className="grid gap-1.5 text-xs text-gray-400 uppercase tracking-wide mb-2 px-1" style={{ gridTemplateColumns: '2rem 1fr auto 3.5rem 3.5rem 2rem 1.5rem' }}>
         <div>Série</div>
         <div>Kg</div>
         <div>%RM</div>
@@ -178,24 +180,23 @@ export default function ExerciseCard({
           };
 
           return (
-            <div key={set.id} className="grid grid-cols-7 gap-1.5 items-center">
+            <div key={set.id} className="grid gap-1.5 items-center" style={{ gridTemplateColumns: '2rem 1fr auto 3.5rem 3.5rem 2rem 1.5rem' }}>
               <div className="text-sm font-medium text-gray-300">{set.setNumber}</div>
               <div className="flex items-center gap-0.5">
                 <button
-                  onClick={() => onUpdateSet(set.id, 'weight', Math.max(0, (set.weight || 0) - 2.5))}
+                  onClick={() => onUpdateSet(set.id, 'weight', Math.max(0, (set.weight || 0) - 1))}
                   className="w-5 h-6 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-600 transition-colors flex-shrink-0"
                 >
                   −
                 </button>
-                <input
-                  type="number"
-                  value={set.weight || ''}
-                  onChange={(e) => onUpdateSet(set.id, 'weight', parseFloat(e.target.value) || 0)}
-                  className="input text-center text-sm py-1 min-w-0"
-                  placeholder="0"
-                />
+                <div
+                  onClick={() => setActivePicker({ setId: set.id, field: 'weight', value: set.weight || 0 })}
+                  className="input text-center text-sm py-1 min-w-0 cursor-pointer select-none"
+                >
+                  {set.weight || '0'}
+                </div>
                 <button
-                  onClick={() => onUpdateSet(set.id, 'weight', (set.weight || 0) + 2.5)}
+                  onClick={() => onUpdateSet(set.id, 'weight', (set.weight || 0) + 1)}
                   className="w-5 h-6 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-600 transition-colors flex-shrink-0"
                 >
                   +
@@ -206,22 +207,18 @@ export default function ExerciseCard({
               }`}>
                 {percentRM ? `${percentRM}%` : '-'}
               </div>
-              <input
-                type="number"
-                value={set.reps || ''}
-                onChange={(e) => onUpdateSet(set.id, 'reps', parseInt(e.target.value) || 0)}
-                className="input text-center text-sm py-1"
-                placeholder="0"
-              />
-              <input
-                type="number"
-                value={set.rir ?? ''}
-                onChange={(e) => onUpdateSet(set.id, 'rir', parseInt(e.target.value) || 0)}
-                className="input text-center text-sm py-1"
-                placeholder="-"
-                min="0"
-                max="10"
-              />
+              <div
+                onClick={() => setActivePicker({ setId: set.id, field: 'reps', value: set.reps || 0 })}
+                className="input text-center text-sm py-1 min-w-0 cursor-pointer select-none"
+              >
+                {set.reps || '0'}
+              </div>
+              <div
+                onClick={() => setActivePicker({ setId: set.id, field: 'rir', value: set.rir ?? 0 })}
+                className="input text-center text-sm py-1 min-w-0 cursor-pointer select-none"
+              >
+                {set.rir ?? '-'}
+              </div>
               <button
                 onClick={() => onUpdateSet(set.id, 'completed', !set.completed)}
                 className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
@@ -282,6 +279,37 @@ export default function ExerciseCard({
             placeholder="Ressenti, remarques, ajustements..."
           />
         </div>
+      )}
+      {/* Scroll Picker RM */}
+      {rmPickerOpen && (
+        <ScrollPicker
+          value={exercise.rm || 0}
+          min={0}
+          max={300}
+          step={1}
+          label="RM (kg)"
+          onConfirm={(val) => {
+            onUpdateRM(val);
+            setRmPickerOpen(false);
+          }}
+          onClose={() => setRmPickerOpen(false)}
+        />
+      )}
+
+      {/* Scroll Picker séries */}
+      {activePicker && (
+        <ScrollPicker
+          value={activePicker.value}
+          min={0}
+          max={activePicker.field === 'weight' ? 300 : activePicker.field === 'reps' ? 100 : 10}
+          step={1}
+          label={activePicker.field === 'weight' ? 'Poids (kg)' : activePicker.field === 'reps' ? 'Reps' : 'RIR'}
+          onConfirm={(val) => {
+            onUpdateSet(activePicker.setId, activePicker.field, val);
+            setActivePicker(null);
+          }}
+          onClose={() => setActivePicker(null)}
+        />
       )}
     </Card>
   );

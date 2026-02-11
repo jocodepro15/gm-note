@@ -2,9 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Styles de base pour l'application - Mode sombre */
+/* ===== Style futuriste - Mode sombre ===== */
 body {
-  @apply bg-gray-900 text-gray-100;
+  background: linear-gradient(135deg, #0a0f1a 0%, #0d1525 50%, #0a1628 100%);
+  @apply text-gray-100;
+  min-height: 100vh;
 }
 
 /* Masquer la scrollbar de la navigation */
@@ -16,41 +18,123 @@ body {
   display: none;
 }
 
-/* Utilitaires personnalisés */
 @layer components {
+  /* Bouton primaire avec glow */
   .btn-primary {
-    @apply bg-primary-600 text-white px-4 py-2 rounded-lg font-medium
-           hover:bg-primary-500 transition-colors duration-200
-           focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-gray-900;
+    @apply text-white px-4 py-2 rounded-xl font-medium transition-all duration-300
+           focus:outline-none;
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.3), 0 0 30px rgba(16, 185, 129, 0.1);
+  }
+  .btn-primary:hover {
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.5), 0 0 40px rgba(16, 185, 129, 0.2);
+    transform: translateY(-1px);
   }
 
+  /* Bouton secondaire glass */
   .btn-secondary {
-    @apply bg-gray-700 text-gray-100 px-4 py-2 rounded-lg font-medium
-           hover:bg-gray-600 transition-colors duration-200
-           focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:ring-offset-gray-900;
+    @apply text-gray-100 px-4 py-2 rounded-xl font-medium transition-all duration-300
+           focus:outline-none;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
   }
 
+  /* Carte glassmorphism */
   .card {
-    @apply bg-gray-800 rounded-xl shadow-lg border border-gray-700 p-4;
+    @apply rounded-2xl p-4;
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   }
 
+  /* Input futuriste */
   .input {
-    @apply w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100
-           placeholder-gray-400
-           focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+    @apply w-full px-1 py-2 rounded-xl text-gray-100
+           placeholder-gray-500
+           focus:outline-none transition-all duration-300;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
   }
+  .input:focus {
+    border-color: rgba(16, 185, 129, 0.5);
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.2), 0 0 20px rgba(16, 185, 129, 0.05);
+  }
+
+  /* Masquer les spinners des inputs number */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+}
+
+/* ===== Overrides pour le thème futuriste ===== */
+
+/* Fond des sections */
+.bg-gray-900 { background: transparent !important; }
+.bg-gray-800 {
+  background: rgba(255, 255, 255, 0.03) !important;
+  backdrop-filter: blur(20px);
+}
+.bg-gray-700 {
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+.bg-gray-750 {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Bordures subtiles */
+.border-gray-700 { border-color: rgba(255, 255, 255, 0.08) !important; }
+.border-gray-600 { border-color: rgba(255, 255, 255, 0.1) !important; }
+
+/* Shadow glow sur les éléments importants */
+.shadow-lg {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Glow sur les éléments primaires */
+.bg-primary-600 {
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+}
+
+/* Select styling */
+select {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  @apply rounded-xl text-gray-100;
+}
+select option {
+  background: #1a2332;
+  color: #e5e7eb;
 }
 
 /* ===== Mode clair ===== */
 [data-theme="light"] {
-  background-color: #f3f4f6;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 50%, #f0fdf4 100%) !important;
   color: #111827;
 }
 
-[data-theme="light"] .bg-gray-900 { background-color: #f3f4f6 !important; }
-[data-theme="light"] .bg-gray-800 { background-color: #ffffff !important; }
-[data-theme="light"] .bg-gray-700 { background-color: #e5e7eb !important; }
-[data-theme="light"] .bg-gray-750 { background-color: #f9fafb !important; }
+[data-theme="light"] body {
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 50%, #f0fdf4 100%) !important;
+}
+
+[data-theme="light"] .bg-gray-900 { background: transparent !important; }
+[data-theme="light"] .bg-gray-800 {
+  background: rgba(255, 255, 255, 0.7) !important;
+  backdrop-filter: blur(20px);
+}
+[data-theme="light"] .bg-gray-700 { background: rgba(0, 0, 0, 0.04) !important; }
+[data-theme="light"] .bg-gray-750 { background: rgba(255, 255, 255, 0.5) !important; }
 
 [data-theme="light"] .text-gray-100 { color: #111827 !important; }
 [data-theme="light"] .text-gray-200 { color: #1f2937 !important; }
@@ -59,26 +143,25 @@ body {
 [data-theme="light"] .text-gray-500 { color: #9ca3af !important; }
 [data-theme="light"] .text-white { color: #111827 !important; }
 
-[data-theme="light"] .border-gray-700 { border-color: #d1d5db !important; }
-[data-theme="light"] .border-gray-600 { border-color: #e5e7eb !important; }
+[data-theme="light"] .border-gray-700 { border-color: rgba(0, 0, 0, 0.08) !important; }
+[data-theme="light"] .border-gray-600 { border-color: rgba(0, 0, 0, 0.1) !important; }
 
 [data-theme="light"] .input {
-  background-color: #f3f4f6 !important;
-  border-color: #d1d5db !important;
+  background: rgba(0, 0, 0, 0.03) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
   color: #111827 !important;
 }
 
 [data-theme="light"] .input::placeholder { color: #9ca3af !important; }
 
 [data-theme="light"] .shadow-lg {
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06) !important;
 }
 
 [data-theme="light"] .focus\:ring-offset-gray-900 {
-  --tw-ring-offset-color: #f3f4f6 !important;
+  --tw-ring-offset-color: #f0fdf4 !important;
 }
 
-/* Select et option en mode clair */
 [data-theme="light"] select option {
   background-color: #ffffff;
   color: #111827;

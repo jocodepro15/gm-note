@@ -129,9 +129,6 @@ export default function Dashboard() {
       {/* Banner deload si nécessaire */}
       <DeloadBanner workouts={workouts} />
 
-      {/* 1. Message de bienvenue */}
-      <p className="text-lg text-gray-300">{welcomeMessage}</p>
-
       {/* 2. Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-100">Accueil</h1>
@@ -244,13 +241,14 @@ export default function Dashboard() {
               return (
                 <Card
                   key={program.id}
-                  className={`${
+                  className={`cursor-pointer hover:ring-2 hover:ring-primary-500 transition-all ${
                     completed
                       ? 'bg-green-900/30 border-green-600'
                       : started
                       ? 'bg-yellow-900/30 border-yellow-600'
                       : ''
                   }`}
+                  onClick={() => navigate(`/new?day=${program.dayType}`)}
                 >
                   <div className="text-xs text-gray-400 uppercase tracking-wide">
                     {program.dayType}
