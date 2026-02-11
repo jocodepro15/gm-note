@@ -49,9 +49,10 @@ export default function ExerciseSelector({ onSelect, onCancel }: ExerciseSelecto
           }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && query.trim()) {
+              // Si un seul résultat, le sélectionner ; sinon ajouter tel quel
               if (filtered.length === 1) {
                 onSelect(filtered[0].name);
-              } else if (filtered.length === 0) {
+              } else {
                 onSelect(query.trim());
               }
             }
@@ -163,19 +164,21 @@ export default function ExerciseSelector({ onSelect, onCancel }: ExerciseSelecto
               ))
             ) : (
               <div className="text-center py-3">
-                <p className="text-sm text-gray-400 mb-2">Aucun exercice trouvé</p>
-                {query.trim() && (
-                  <button
-                    onClick={() => onSelect(query.trim())}
-                    className="text-sm text-primary-400 hover:text-primary-300 font-medium"
-                  >
-                    + Ajouter "{query.trim()}" comme exercice personnalisé
-                  </button>
-                )}
+                <p className="text-sm text-gray-400">Aucun exercice trouvé</p>
               </div>
             )
           )}
         </div>
+
+        {/* Bouton ajout direct */}
+        {query.trim() && (
+          <button
+            onClick={() => onSelect(query.trim())}
+            className="w-full text-left px-3 py-2 rounded-lg bg-primary-600/20 hover:bg-primary-600/30 transition-colors text-sm text-primary-300 font-medium"
+          >
+            + Ajouter "{query.trim()}"
+          </button>
+        )}
 
         {/* Bouton annuler */}
         <Button
