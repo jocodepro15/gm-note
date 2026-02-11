@@ -3,10 +3,14 @@
 @tailwind utilities;
 
 /* ===== Style futuriste - Mode sombre ===== */
+html {
+  background: #0a0f1a;
+}
 body {
   background: linear-gradient(135deg, #0a0f1a 0%, #0d1525 50%, #0a1628 100%);
   @apply text-gray-100;
   min-height: 100vh;
+  overscroll-behavior: none;
 }
 
 /* Masquer la scrollbar de la navigation */
