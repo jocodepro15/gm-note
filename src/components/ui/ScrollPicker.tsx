@@ -11,8 +11,8 @@ interface ScrollPickerProps {
   onClose: () => void;
 }
 
-const ITEM_HEIGHT = 48;
-const VISIBLE_ITEMS = 5;
+const ITEM_HEIGHT = 52;
+const VISIBLE_ITEMS = 7;
 const CENTER = Math.floor(VISIBLE_ITEMS / 2);
 
 export default function ScrollPicker({ value, min, max, step, label, onConfirm, onClose }: ScrollPickerProps) {
