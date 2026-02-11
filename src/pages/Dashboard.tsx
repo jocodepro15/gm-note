@@ -56,13 +56,6 @@ export default function Dashboard() {
   const todayName = dayNames[today.getDay()];
   const todayProgram = programs.find((p) => p.dayType === todayName);
 
-  // Message de bienvenue
-  const hour = today.getHours();
-  const greeting = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
-  const welcomeMessage = todayProgram
-    ? `${greeting} ! Prêt pour ta séance ${todayProgram.sessionName} ?`
-    : `${greeting} ! Bonne journée de repos.`;
-
   // Stats
   const totalCompleted = workouts.filter(w => w.completed).length;
   const completedThisWeek = thisWeekWorkouts.filter(w => w.completed).length;

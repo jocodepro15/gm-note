@@ -1,8 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
 
 const navItems = [
   { path: '/', label: 'Accueil' },
@@ -20,7 +19,6 @@ const navItems = [
 export default function Header() {
   const location = useLocation();
   const { displayName, signOut } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
 
   // Fermer le menu quand on change de page
