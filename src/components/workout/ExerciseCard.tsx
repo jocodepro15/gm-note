@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Exercise, Set } from '../../types';
+import { Exercise, Set as WorkoutSet } from '../../types';
 import { SuggestionData } from '../../hooks/useLastSessionData';
 import Card from '../ui/Card';
 import ScrollPicker from '../ui/ScrollPicker';
@@ -7,7 +7,7 @@ import PyramidModal from './PyramidModal';
 
 interface ExerciseCardProps {
   exercise: Exercise;
-  onUpdateSet: (setId: string, field: keyof Set, value: number | boolean) => void;
+  onUpdateSet: (setId: string, field: keyof WorkoutSet, value: number | boolean) => void;
   onUpdateRM: (rm: number) => void;
   onUpdateNotes: (notes: string) => void;
   onAddSet: () => void;
@@ -69,6 +69,15 @@ export default function ExerciseCard({
 
   const borderClass = supersetGroup ? `border-l-4 ${SUPERSET_COLORS[supersetGroup] || 'border-l-purple-500'}` : '';
 
+  // Copier le poids d'une série vers toutes les autres séries de l'exercice
+  const copyWeightToAll = (weight: number) => {
+    exercise.sets.forEach(set => {
+      if (set.weight !== weight) {
+        onUpdateSet(set.id, 'weight', weight);
+      }
+    });
+  };
+
   const getPercentColor = (percent: number) => {
     if (percent >= 90) return 'text-red-600 bg-red-50';
     if (percent >= 80) return 'text-orange-600 bg-orange-50';
@@ -76,7 +85,7 @@ export default function ExerciseCard({
     return 'text-green-600 bg-green-50';
   };
 
-  const renderSetRow = (set: Set, isPyramid = false) => {
+  const renderSetRow = (set: WorkoutSet, isPyramid = false) => {
     const percentRM = exercise.rm && set.weight
       ? Math.round((set.weight / exercise.rm) * 100)
       : null;
@@ -162,6 +171,16 @@ export default function ExerciseCard({
           >
             +
           </button>
+          {/* Bouton copier le poids vers toutes les séries */}
+          {set.weight > 0 && exercise.sets.length > 1 && (
+            <button
+              onClick={() => copyWeightToAll(set.weight)}
+              className="w-5 h-6 rounded text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-900/30 transition-colors flex-shrink-0"
+              title="Copier ce poids sur toutes les séries"
+            >
+              ⇊
+            </button>
+          )}
         </div>
         <div className={`text-center text-sm py-1 rounded-lg font-medium ${
           percentRM ? getPercentColor(percentRM) : 'text-gray-400'
@@ -530,6 +549,13 @@ export default function ExerciseCard({
             setActivePicker(null);
           }}
           onClose={() => setActivePicker(null)}
+          quickValues={
+            activePicker.field === 'weight'
+              ? [...new Set(exercise.sets.map(s => s.weight).filter(w => w > 0))].map(w => ({ label: `${w} kg`, value: w }))
+              : activePicker.field === 'reps'
+              ? [...new Set(exercise.sets.map(s => s.reps).filter(r => r > 0))].map(r => ({ label: `${r} reps`, value: r }))
+              : undefined
+          }
         />
       )}
     </Card>

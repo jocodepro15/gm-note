@@ -4,7 +4,6 @@ import { Workout } from '../types';
 import Card from '../components/ui/Card';
 import { clearTestData } from '../utils/generateTestData';
 import { calculate1RM, formatDate, formatFullDate, darkTooltipStyle } from '../utils/calcUtils';
-import WeeklyTonnageChart from '../components/progression/WeeklyTonnageChart';
 import MuscleFrequencyChart from '../components/progression/MuscleFrequencyChart';
 import SessionComparison from '../components/progression/SessionComparison';
 import StrengthCurveChart from '../components/progression/StrengthCurveChart';
@@ -233,6 +232,30 @@ export default function Progression() {
     return data;
   }, [workouts, selectedExercise]);
 
+  // Données d'évolution du poids max par exercice
+  const weightProgressData = useMemo(() => {
+    if (selectedExercise === 'all') return [];
+
+    const data: { date: string; fullDate: string; maxWeight: number }[] = [];
+    const sorted = [...workouts].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    sorted.forEach((w) => {
+      const exercise = w.exercises.find((e) => e.name === selectedExercise);
+      if (exercise) {
+        const maxW = Math.max(...exercise.sets.filter(s => s.completed && s.weight > 0).map(s => s.weight), 0);
+        if (maxW > 0) {
+          data.push({
+            date: formatDate(w.date),
+            fullDate: formatFullDate(w.date),
+            maxWeight: maxW,
+          });
+        }
+      }
+    });
+
+    return data;
+  }, [workouts, selectedExercise]);
+
   // État pour la recherche d'exercice
   const [exerciseSearch, setExerciseSearch] = useState('');
 
@@ -424,9 +447,6 @@ export default function Progression() {
         )}
       </Card>
 
-      {/* Tonnage hebdomadaire */}
-      <WeeklyTonnageChart workouts={filteredWorkouts} months={months} />
-
       {/* Évolution du RM par exercice */}
       <Card>
         <h2 className="text-lg font-semibold text-white mb-4">Évolution du RM par exercice</h2>
@@ -512,6 +532,95 @@ export default function Progression() {
           <div className="border-t border-gray-700 pt-4">
             <h3 className="text-md font-medium text-primary-400 mb-2">{selectedExercise}</h3>
             <p className="text-gray-400 text-center py-8">Aucun RM enregistré pour cet exercice</p>
+          </div>
+        ) : null}
+      </Card>
+
+      {/* Évolution du poids max par exercice */}
+      <Card>
+        <h2 className="text-lg font-semibold text-white mb-4">Évolution du poids max par exercice</h2>
+
+        {/* Barre de recherche */}
+        <input
+          type="text"
+          value={exerciseSearch}
+          onChange={(e) => setExerciseSearch(e.target.value)}
+          placeholder="Rechercher un exercice..."
+          className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 text-sm border border-gray-600 focus:border-primary-500 focus:outline-none mb-3"
+        />
+
+        {/* Liste des exercices */}
+        <div className="max-h-48 overflow-y-auto space-y-1 mb-4">
+          {filteredExercises.length > 0 ? (
+            filteredExercises.map((ex) => (
+              <button
+                key={ex}
+                onClick={() => { setSelectedExercise(ex); setExerciseSearch(''); }}
+                className={`w-full text-left px-4 py-2.5 rounded-lg text-sm transition-colors ${
+                  selectedExercise === ex
+                    ? 'bg-blue-600 text-white font-medium'
+                    : 'text-gray-300 hover:bg-gray-700'
+                }`}
+              >
+                {ex}
+              </button>
+            ))
+          ) : (
+            <p className="text-gray-500 text-sm text-center py-4">Aucun exercice trouvé</p>
+          )}
+        </div>
+
+        {/* Graphique poids max */}
+        {selectedExercise !== 'all' && weightProgressData.length > 0 ? (
+          <>
+            <div className="border-t border-gray-700 pt-4 mb-2">
+              <h3 className="text-md font-medium text-blue-400 mb-1">{selectedExercise}</h3>
+              <p className="text-xs text-gray-400 mb-3">
+                Poids max actuel : <span className="text-white font-semibold">{weightProgressData[weightProgressData.length - 1].maxWeight} kg</span>
+                {weightProgressData.length >= 2 && (() => {
+                  const diff = weightProgressData[weightProgressData.length - 1].maxWeight - weightProgressData[0].maxWeight;
+                  return (
+                    <span className={diff >= 0 ? 'text-green-400' : 'text-red-400'}>
+                      {' '}({diff >= 0 ? '+' : ''}{diff} kg depuis le début)
+                    </span>
+                  );
+                })()}
+              </p>
+            </div>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={weightProgressData}>
+                  <defs>
+                    <linearGradient id="weightGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} />
+                  <YAxis stroke="#9ca3af" fontSize={12} domain={['dataMin - 5', 'dataMax + 5']} />
+                  <Tooltip
+                    contentStyle={darkTooltipStyle}
+                    labelFormatter={(_, payload) => payload[0]?.payload?.fullDate || ''}
+                    formatter={(value: unknown) => [`${Number(value)} kg`, 'Poids max']}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="maxWeight"
+                    stroke="#3b82f6"
+                    strokeWidth={2}
+                    dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
+                    activeDot={{ r: 6 }}
+                    name="Poids max (kg)"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </>
+        ) : selectedExercise !== 'all' ? (
+          <div className="border-t border-gray-700 pt-4">
+            <h3 className="text-md font-medium text-blue-400 mb-2">{selectedExercise}</h3>
+            <p className="text-gray-400 text-center py-8">Aucune donnée de poids pour cet exercice</p>
           </div>
         ) : null}
       </Card>

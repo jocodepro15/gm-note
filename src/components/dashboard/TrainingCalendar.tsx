@@ -36,16 +36,16 @@ export default function TrainingCalendar({ workouts }: Props) {
     const p33 = volumes[Math.floor(volumes.length * 0.33)] || 1;
     const p66 = volumes[Math.floor(volumes.length * 0.66)] || 2;
 
-    // Générer 52 semaines de jours (364 jours)
-    const totalDays = 364;
+    // Commencer au 1er janvier de l'année en cours
     const endDate = new Date(today);
-    const startDate = new Date(today);
-    startDate.setDate(startDate.getDate() - totalDays + 1);
+    const startDate = new Date(today.getFullYear(), 0, 1); // 1er janvier
 
-    // Aligner au lundi
+    // Aligner au lundi précédent
     const startDow = startDate.getDay();
     const offset = startDow === 0 ? 6 : startDow - 1; // jours depuis lundi
     startDate.setDate(startDate.getDate() - offset);
+
+    const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
     const daysList: { date: Date; dateStr: string }[] = [];
     const current = new Date(startDate);
@@ -57,16 +57,18 @@ export default function TrainingCalendar({ workouts }: Props) {
       current.setDate(current.getDate() + 1);
     }
 
-    // Labels mois
+    // Labels mois (ignorer décembre de l'année précédente)
+    const currentYear = today.getFullYear();
     const months: { label: string; col: number }[] = [];
     let lastMonth = -1;
     daysList.forEach((d, i) => {
       const month = d.date.getMonth();
       const col = Math.floor(i / 7);
       if (month !== lastMonth) {
+        lastMonth = month;
+        if (d.date.getFullYear() < currentYear) return; // ignorer les jours de l'année précédente
         const label = d.date.toLocaleDateString('fr-FR', { month: 'short' });
         months.push({ label, col });
-        lastMonth = month;
       }
     });
 

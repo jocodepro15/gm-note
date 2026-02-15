@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useWorkouts } from '../context/WorkoutContext';
 import { usePrograms } from '../context/ProgramContext';
@@ -491,6 +492,26 @@ export default function NewWorkout() {
 
   const [showAddExercise, setShowAddExercise] = useState(false);
   const [showGeneralNotes, setShowGeneralNotes] = useState(false);
+  const [showProgramDropdown, setShowProgramDropdown] = useState(false);
+  const programDropdownRef = useRef<HTMLDivElement>(null);
+  const programMenuRef = useRef<HTMLDivElement>(null);
+
+  // Fermer le dropdown programme quand on clique en dehors
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      const target = e.target as Node;
+      if (
+        programDropdownRef.current && !programDropdownRef.current.contains(target) &&
+        programMenuRef.current && !programMenuRef.current.contains(target)
+      ) {
+        setShowProgramDropdown(false);
+      }
+    }
+    if (showProgramDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showProgramDropdown]);
 
   const handleSave = async (completed: boolean) => {
     if (isEditMode && workoutId) {
@@ -583,18 +604,46 @@ export default function NewWorkout() {
         <Card className="bg-gray-800 border-primary-600">
           <div className="flex items-center justify-between mb-2">
             <h2 className="font-semibold text-primary-300">{selectedProgram?.sessionName || `Séance ${selectedDay}`}</h2>
-            <select
-              value={selectedProgram?.id || ''}
-              onChange={(e) => {
-                const program = programs.find(p => p.id === e.target.value);
-                if (program) handleProgramChange(program);
-              }}
-              className="text-sm bg-gray-700 border border-gray-600 rounded-lg px-2 py-1 text-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
-            >
-              {programs.map((p) => (
-                <option key={p.id} value={p.id}>{p.sessionName}</option>
-              ))}
-            </select>
+            <div className="relative" ref={programDropdownRef}>
+              <button
+                onClick={() => setShowProgramDropdown(!showProgramDropdown)}
+                className="flex items-center gap-2 text-sm bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-primary-400 hover:bg-gray-600 transition-colors"
+              >
+                {selectedProgram?.sessionName || 'Choisir'}
+                <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 transition-transform ${showProgramDropdown ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {showProgramDropdown && createPortal(
+                <div
+                  ref={programMenuRef}
+                  className="fixed min-w-[220px] rounded-xl bg-gray-800 border border-gray-700 shadow-2xl py-1"
+                  style={{
+                    zIndex: 9999,
+                    top: (programDropdownRef.current?.getBoundingClientRect().bottom ?? 0) + 8,
+                    right: window.innerWidth - (programDropdownRef.current?.getBoundingClientRect().right ?? 0),
+                  }}
+                >
+                  {programs.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => {
+                        handleProgramChange(p);
+                        setShowProgramDropdown(false);
+                      }}
+                      className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
+                        selectedProgram?.id === p.id
+                          ? 'bg-primary-600 text-white font-medium'
+                          : 'text-gray-300 hover:bg-gray-700'
+                      }`}
+                    >
+                      {p.sessionName}
+                    </button>
+                  ))}
+                </div>,
+                document.body
+              )}
+            </div>
           </div>
           {selectedProgram?.focus && <p className="text-sm text-primary-400">{selectedProgram.focus}</p>}
         </Card>

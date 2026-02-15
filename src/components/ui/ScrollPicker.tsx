@@ -1,6 +1,11 @@
 import { useEffect, useRef, useMemo, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 
+interface QuickValue {
+  label: string;
+  value: number;
+}
+
 interface ScrollPickerProps {
   value: number;
   min: number;
@@ -9,13 +14,14 @@ interface ScrollPickerProps {
   label: string;
   onConfirm: (value: number) => void;
   onClose: () => void;
+  quickValues?: QuickValue[];
 }
 
 const ITEM_HEIGHT = 52;
 const VISIBLE_ITEMS = 7;
 const CENTER = Math.floor(VISIBLE_ITEMS / 2);
 
-export default function ScrollPicker({ value, min, max, step, label, onConfirm, onClose }: ScrollPickerProps) {
+export default function ScrollPicker({ value, min, max, step, label, onConfirm, onClose, quickValues }: ScrollPickerProps) {
   const listRef = useRef<HTMLDivElement>(null);
 
   // Générer la liste des valeurs
@@ -90,6 +96,29 @@ export default function ScrollPicker({ value, min, max, step, label, onConfirm, 
             OK
           </button>
         </div>
+
+        {/* Raccourcis */}
+        {quickValues && quickValues.length > 0 && (
+          <div className="flex items-center gap-2 px-5 py-3 overflow-x-auto" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+            {quickValues.map((qv, i) => (
+              <button
+                key={i}
+                onClick={() => {
+                  const idx = values.findIndex(v => v === qv.value);
+                  if (idx >= 0) scrollToIndex(idx);
+                }}
+                className="flex-shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                style={{
+                  background: 'rgba(16, 185, 129, 0.15)',
+                  color: '#10b981',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                }}
+              >
+                {qv.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Picker */}
         <div className="relative" style={{ height: pickerHeight }}>
